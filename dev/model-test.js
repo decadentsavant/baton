@@ -52,7 +52,7 @@ eq("backoffMs caps", M.backoffMs(99), 60000)
 
 eq("tooltip offline", M.tooltipText({ connected: false }), "Baton — offline")
 eq("tooltip ready", M.tooltipText({ connected: true, showCounter: true, globalTotal: 1204891, online: 3847, countryNames: C.NAMES }),
-  "Click to wave at an Omarchy user\n1,204,891 waves sent\n3,847 online now")
+  "Click to wave at an Omarch\n1,204,891 waves sent\n3,847 online now")
 eq("tooltip cooling down", M.tooltipText({ connected: true, cooldownRemaining: 1800, lastOrigin: "JP", countryNames: C.NAMES }),
   "Next wave in 30m\nLast wave from Japan")
 

@@ -97,7 +97,7 @@ function tooltipText(state) {
   else if (s.pending) lines.push("Sending a wave…")
   else if (s.cooldownRemaining > 0) lines.push("Next wave in " + cooldownLabel(s.cooldownRemaining))
   else if (s.baton) lines.push("Click to pass the baton on")
-  else lines.push("Click to wave at an Omarchy user")
+  else lines.push("Click to wave at an Omarch")
 
   if (s.baton) lines.push("Holding a baton \u2014 " + batonLabel(s.baton, s.nowMs))
   if (s.nobodyAround) lines.push("Your last wave found nobody online")
