@@ -2,6 +2,13 @@
 // function is a plain data transform so the protocol can be exercised with
 // `node dev/model-test.js` without standing up a shell.
 
+// Must match "version" in manifest.json; dev/model-test.js checks that. The
+// widget cannot read its own manifest cheaply, and the relay needs a number to
+// compare against, so the number lives here too.
+var VERSION = "0.4.0"
+var PLUGIN_ID = "io.github.decadentsavant.baton"
+var UPDATE_COMMAND = "omarchy plugin update " + PLUGIN_ID
+
 // One relay frame. The wire format is newline-delimited JSON rather than SSE
 // framing, because SplitParser already gives us line splitting for free and a
 // bare object is far easier to eyeball with curl.
@@ -99,6 +106,7 @@ function tooltipText(state) {
   else if (s.baton) lines.push("Click to pass the baton on")
   else lines.push("Click to wave at an Omarch")
 
+  if (s.outdated) lines.push("Update available \u2014 " + UPDATE_COMMAND)
   if (s.baton) lines.push("Holding a baton \u2014 " + batonLabel(s.baton, s.nowMs))
   if (s.nobodyAround) lines.push("Your last wave found nobody online")
   if (s.lastOrigin) lines.push("Last wave from " + originLabel(s.lastOrigin, s.countryNames))
@@ -142,6 +150,27 @@ function batonLabel(baton, nowMs) {
 
   if (countries > 0) parts.push(countries + (countries === 1 ? " country" : " countries"))
   return parts.join(" \u00b7 ")
+}
+
+// A plugin is a git clone that only moves when its owner runs the update
+// command, so the relay tells each client the oldest version it still fully
+// supports and the widget compares. Dotted integers, compared numerically per
+// segment with missing segments as zero. An empty or malformed floor never
+// counts as "behind": the worst outcome of a bad frame must be silence, not a
+// nag.
+function versionBefore(current, minimum) {
+  var parse = function(v) {
+    var text = String(v || "").trim()
+    if (!/^\d+(\.\d+)*$/.test(text)) return null
+    return text.split(".").map(function(part) { return parseInt(part, 10) })
+  }
+  var a = parse(current), b = parse(minimum)
+  if (!a || !b) return false
+  for (var i = 0; i < Math.max(a.length, b.length); i++) {
+    var x = a[i] || 0, y = b[i] || 0
+    if (x !== y) return x < y
+  }
+  return false
 }
 
 // Reconnect backoff, capped. The relay holds an idle connection open for

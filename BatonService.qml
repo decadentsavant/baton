@@ -30,6 +30,9 @@ Scope {
   property var baton: null
   property double nowMs: Date.now()
   property double readyAt: 0
+  property string minClient: ""
+  property bool updateNotified: false
+  readonly property bool outdated: Model.versionBefore(Model.VERSION, minClient)
   readonly property int cooldownRemaining: Model.remainingSeconds(readyAt, nowMs)
   readonly property bool canWave: connected && !pending && identity !== "" && cooldownRemaining === 0
   signal received()
@@ -50,6 +53,16 @@ Scope {
     root.baton = null
     root.nobodyAround = false
     root.readyAt = 0
+    root.minClient = ""
+  }
+
+  // Once per session, and only when a relay actually says so. The tooltip
+  // keeps the hint for as long as the widget stays behind.
+  onOutdatedChanged: {
+    if (!root.outdated || root.updateNotified) return
+    root.updateNotified = true
+    Util.execArgv(["omarchy-notification-send", "--app-name", "Baton", "-u", "low", "-g", root.glyph,
+      "Baton has an update", "The relay supports Baton " + root.minClient + " or newer. Run: " + Model.UPDATE_COMMAND])
   }
 
   function configure(url, share, sound) {
@@ -67,6 +80,7 @@ Scope {
       root.globalTotal = 0
       root.online = 0
       root.readyAt = 0
+      root.minClient = ""
       if (waveProc.running) waveProc.running = false
       reconnect()
     } else if (root.identity !== "" && !streamProc.running && !reconnectTimer.running) {
@@ -140,6 +154,7 @@ Scope {
     if (frame.type === "state") {
       root.baton = frame.baton || null
       root.readyAt = Model.cooldownDeadline(frame.remaining, root.nowMs)
+      root.minClient = typeof frame.minClient === "string" ? frame.minClient : ""
       root.connected = true
       root.reconnectAttempt = 0
     } else if (frame.type === "wave") {

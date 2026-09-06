@@ -59,6 +59,12 @@ omarchy plugin enable io.github.decadentsavant.baton
 omarchy plugin remove io.github.decadentsavant.baton
 ```
 
+Omarchy does not update plugins on its own. The widget is a git clone that
+moves only when you run the update command above. The relay tells each widget
+the oldest version it still fully supports. If yours is older, the tooltip
+gains an "Update available" line with the command, and you get one notification
+per session. Older widgets keep working until the relay changes the protocol.
+
 Disabling or removing the last widget closes its relay connection. Removal
 leaves the local identity directory in place so a reinstall retains it. To
 forget the identity too, after removal delete only

@@ -57,6 +57,7 @@ BarWidget {
       nowMs: Local.BatonService.nowMs,
       cooldownRemaining: Local.BatonService.cooldownRemaining,
       nobodyAround: Local.BatonService.nobodyAround,
+      outdated: Local.BatonService.outdated,
       lastOrigin: Local.BatonService.lastOrigin,
       globalTotal: Local.BatonService.globalTotal,
       online: Local.BatonService.online,

@@ -6,7 +6,7 @@ const load = (file) => {
   const src = fs.readFileSync(path.join(__dirname, "..", file), "utf8")
   const sandbox = {}
   new Function("exports", src + "\n;Object.assign(exports, typeof NAMES !== 'undefined' ? {NAMES} : {" +
-    "parseFrame, flagFor, originLabel, waveHeadline, cooldownLabel, formatCount, tooltipText, backoffMs, ageLabel, batonLabel, cooldownDeadline, remainingSeconds, batonUrl, inviteText, asBool, tickMs})")(sandbox)
+    "parseFrame, flagFor, originLabel, waveHeadline, cooldownLabel, formatCount, tooltipText, backoffMs, ageLabel, batonLabel, cooldownDeadline, remainingSeconds, batonUrl, inviteText, asBool, tickMs, versionBefore, VERSION, PLUGIN_ID, UPDATE_COMMAND})")(sandbox)
   return sandbox
 }
 
@@ -99,6 +99,19 @@ eq("asBool falls back on junk", [M.asBool("maybe", true), M.asBool(undefined, fa
 eq("tickMs counts seconds under a minute", M.tickMs(45), 1000)
 eq("tickMs lands on the next minute boundary", [M.tickMs(3583), M.tickMs(120), M.tickMs(61)], [43000, 60000, 1000])
 eq("tickMs idles slowly with no cooldown", M.tickMs(0), 60000)
+
+// --- updates ---
+const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "manifest.json"), "utf8"))
+eq("VERSION matches manifest.json", M.VERSION, manifest.version)
+eq("PLUGIN_ID matches manifest.json", M.PLUGIN_ID, manifest.id)
+eq("versionBefore behind", M.versionBefore("0.3.2", "0.4.0"), true)
+eq("versionBefore equal", M.versionBefore("0.4.0", "0.4.0"), false)
+eq("versionBefore ahead", M.versionBefore("0.10.0", "0.9.9"), false)
+eq("versionBefore short segments count as zero", [M.versionBefore("0.4", "0.4.0"), M.versionBefore("0.4", "0.4.1")], [false, true])
+eq("versionBefore no floor is never behind", [M.versionBefore("0.4.0", ""), M.versionBefore("0.4.0", undefined), M.versionBefore("0.4.0", "v1"), M.versionBefore("0.4.0", "1.0-rc1")], [false, false, false, false])
+eq("versionBefore bad current is never behind", M.versionBefore("", "9.9.9"), false)
+eq("tooltip when behind", M.tooltipText({ connected: true, outdated: true }),
+  "Click to wave at an Omarch\nUpdate available \u2014 omarchy plugin update io.github.decadentsavant.baton")
 
 console.log(failures === 0 ? "\nall passed" : `\n${failures} failed`)
 process.exit(failures === 0 ? 0 : 1)
