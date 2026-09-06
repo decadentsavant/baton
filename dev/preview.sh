@@ -76,5 +76,5 @@ assert all(error not in text for error in ('ReferenceError', 'TypeError', 'PREVI
 print('Multi-widget connection, plain-wave retention, handoff and cooldown: passed')
 PY
 ffmpeg -hide_banner -loglevel error -y -framerate 20 -i "$BATON_PREVIEW_FRAMES/frame-%04d.png" -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$output/docs/preview.mp4"
-ffmpeg -hide_banner -loglevel error -y -i "$BATON_PREVIEW_FRAMES/frame-0140.png" -frames:v 1 "$output/preview.webp"
-printf 'Draft preview written to %s. Test logs: %s\n' "$output" "$work"
+# The marketplace still, preview.webp, is rendered separately by dev/listing.sh.
+printf 'Draft video written to %s/docs/preview.mp4. Test logs: %s\n' "$output" "$work"

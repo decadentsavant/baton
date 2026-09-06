@@ -39,9 +39,9 @@ Quickshell runtime test passes. Do not describe lint as warning-free.
 
 ## Before submitting later
 
-Review the new root `preview.webp` and `docs/preview.mp4`. The still is configured
-for marketplace discovery; the video is linked from the README. See
-[PREVIEW.md](PREVIEW.md) for pacing, regeneration, and theme checks.
+Review the root `preview.webp` listing card and `docs/preview.mp4`. The still is
+what the marketplace card shows; the video is linked from the README. See
+[PREVIEW.md](PREVIEW.md) for how each is produced and regenerated.
 
 Recheck the permanent ID against the registry and rerun validation on the final
 commit. Review the ownership and submission checklist yourself, then use the

@@ -5,7 +5,26 @@ The root `preview.webp` is the marketplace still. `docs/preview.mp4` is a
 WebP, or AVIF root previews; GIF and MP4 are not listing-preview formats.
 See the [submission requirements](https://github.com/omacom/omarchy-plugin-marketplace/blob/main/SUBMISSION.md).
 
-Both assets render the real Baton widget and service against an isolated local
+## The still
+
+`preview.webp` is a 2000×1000 listing card rendered from
+`dev/listing/listing.html`. Its right side embeds `dev/listing/bar.png`, an
+unedited screenshot of the real widget and its tooltip in the Omarchy bar. The
+two notification cards reproduce the text the widget sends through
+`omarchy-notification-send`; the title, feature list, rings, and colours are
+presentation artwork. Regenerate it with:
+
+```bash
+./dev/listing.sh
+```
+
+That needs chromium, ImageMagick, Noto Sans, Noto Color Emoji, and JetBrainsMono
+Nerd Font. Retake `bar.png` first when the tooltip wording or bar changes. Set
+`BATON_LISTING_OUTPUT` to write elsewhere.
+
+## The video
+
+The video renders the real Baton widget and service against an isolated local
 relay. The hand is enlarged 7× so its state is readable. The green background,
 progress marks, click ring, and captions are presentation artwork, not added
 plugin UI or a recording of a complete desktop. No public users are involved.
@@ -23,7 +42,7 @@ plugin UI or a recording of a complete desktop. No public users are involved.
 The captions stay visible after the brief widget animation ends. Frame counts
 control these reading times, so a slow render cannot shorten them. Network
 requests wait for scene markers; captures pause while awaiting each result.
-The 20 fps encode contains 540 completed frames. The still uses frame 140.
+The 20 fps encode contains 540 completed frames.
 
 ## Regenerate
 
@@ -48,8 +67,8 @@ and disconnecting after both widgets are released.
 
 Logs and PNG frames stay in the printed `/tmp/baton-demo.*` directory. The
 script stops its own processes on exit. Set `BATON_PREVIEW_OUTPUT` to a
-temporary directory to write `preview.webp` and `docs/preview.mp4` there instead
-of replacing the repository assets.
+temporary directory to write `docs/preview.mp4` there instead of replacing the
+repository asset. The script no longer touches `preview.webp`.
 
 ## Theme compatibility
 

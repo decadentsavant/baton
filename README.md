@@ -2,7 +2,7 @@
 
 **Wave at a random Omarchy user, somewhere in the world. One bit out, one bit back.**
 
-![Baton: a wave arrives from another Omarchy user](preview.webp)
+![Baton in the Omarchy bar, with waves arriving from Poland and Japan](preview.webp)
 
 [Watch the 27-second demo](docs/preview.mp4). It shows the real widget at 7×
 magnification, with an isolated local relay and explanatory captions.
