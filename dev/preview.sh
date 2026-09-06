@@ -3,13 +3,14 @@
 set -euo pipefail
 src="$(cd "$(dirname "$0")/.." && pwd)"
 work=$(mktemp -d /tmp/baton-demo.XXXXXX)
-output="${BATON_PREVIEW_OUTPUT:-$src/docs}"
-mkdir -p "$output"
+output="${BATON_PREVIEW_OUTPUT:-$src}"
+mkdir -p "$output/docs"
 export BATON_PREVIEW_FRAMES="$work/frames"
 export BATON_PREVIEW_RELAY="http://127.0.0.1:${BATON_PREVIEW_PORT:-18081}"
 export XDG_STATE_HOME="$work/state"
 export XDG_CACHE_HOME="$work/cache"
 export QT_QPA_PLATFORM=offscreen
+export QT_QUICK_BACKEND=software
 mkdir -p "$BATON_PREVIEW_FRAMES" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
 cp -r /usr/share/omarchy/shell/Commons /usr/share/omarchy/shell/Ui "$work/"
 ln -s "$src" "$work/Baton"
@@ -31,8 +32,9 @@ pids+=("$!")
 for i in {1..50}; do if curl -fsS "$BATON_PREVIEW_RELAY/healthz" >/dev/null 2>&1; then break; fi; sleep .1; done
 quickshell -p "$work/shell.qml" --no-color >"$work/widget.log" 2>&1 &
 widget_pid=$!; pids+=("$widget_pid")
-python3 - "$BATON_PREVIEW_RELAY" <<'PY'
+python3 - "$BATON_PREVIEW_RELAY" "$work/widget.log" <<'PY'
 import sys,time,json,urllib.request,threading
+from pathlib import Path
 base=sys.argv[1]
 # A second widget instance is in the QML scene. It must not make a second stream.
 for _ in range(70):
@@ -49,15 +51,18 @@ def wave():
     req=urllib.request.Request(base+'/wave',method='POST',headers={'X-Baton-Id':'preview-stranger','CF-Connecting-IP':'198.51.100.1','X-Country':'PL'})
     data=json.load(urllib.request.urlopen(req))
     assert data.get('delivered'),data
+def wait_marker(marker):
+    for _ in range(1000):
+        if marker in Path(sys.argv[2]).read_text(): return
+        time.sleep(.1)
+    raise RuntimeError('preview did not reach '+marker)
+wait_marker('PREVIEW_WAVE1')
 wave()
-time.sleep(5.2)
-wave() # A plain wave must not erase the widget's held baton.
-# The widget waves on its own schedule (Preview.qml, tick 95). Frame capture
-# slows that clock down, so wait for the wave rather than assuming when it lands.
-for _ in range(400):
-    if json.load(urllib.request.urlopen(base+'/stats'))['total']==3: break
-    time.sleep(.1)
-else: raise RuntimeError('widget wave never arrived')
+wait_marker('PREVIEW_WAVE2')
+wave() # A plain wave must preserve the held baton.
+wait_marker('BATON_CHECK')
+assert json.load(urllib.request.urlopen(base+'/stats'))['total']==3
+
 PY
 wait "$widget_pid"
 python3 - "$work/widget.log" <<'PY'
@@ -67,9 +72,9 @@ assert lines,text
 state=json.loads(lines[-1]);assert state==dict(connected=True,received=True,retained=True,passed=True,pending=False),state
 release=[l.split('BATON_RELEASE ',1)[1] for l in text.splitlines() if 'BATON_RELEASE ' in l]
 assert release and json.loads(release[-1])==dict(widgets=0,connected=False),text
-assert 'ReferenceError' not in text and 'TypeError' not in text,text
+assert all(error not in text for error in ('ReferenceError', 'TypeError', 'PREVIEW_TIMEOUT', 'Error:')),text
 print('Multi-widget connection, plain-wave retention, handoff and cooldown: passed')
 PY
-ffmpeg -hide_banner -loglevel error -y -framerate 10 -i "$BATON_PREVIEW_FRAMES/frame-%04d.png" -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$output/preview.mp4"
-ffmpeg -hide_banner -loglevel error -y -i "$BATON_PREVIEW_FRAMES/frame-0050.png" -frames:v 1 "$output/preview.webp"
+ffmpeg -hide_banner -loglevel error -y -framerate 20 -i "$BATON_PREVIEW_FRAMES/frame-%04d.png" -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$output/docs/preview.mp4"
+ffmpeg -hide_banner -loglevel error -y -i "$BATON_PREVIEW_FRAMES/frame-0140.png" -frames:v 1 "$output/preview.webp"
 printf 'Draft preview written to %s. Test logs: %s\n' "$output" "$work"

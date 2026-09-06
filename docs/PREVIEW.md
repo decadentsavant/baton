@@ -1,34 +1,67 @@
-# Draft preview
+# Preview assets
 
-`preview.webp` and `preview.mp4` show the actual Baton widget and shared service
-running against an isolated local relay. The surrounding bar and notification
-are illustrative presentation chrome, clearly labelled in the capture. This is
-not a recording of public activity or a claim about the size of the community.
+The root `preview.webp` is the marketplace still. `docs/preview.mp4` is a
+27-second H.264 video for the README. The marketplace discovers PNG, JPEG,
+WebP, or AVIF root previews; GIF and MP4 are not listing-preview formats.
+See the [submission requirements](https://github.com/omacom/omarchy-plugin-marketplace/blob/main/SUBMISSION.md).
 
-From the client repository root, regenerate on Omarchy with Go, Quickshell,
-curl, Python 3, and ffmpeg installed:
+Both assets render the real Baton widget and service against an isolated local
+relay. The hand is enlarged 7× so its state is readable. The green background,
+progress marks, click ring, and captions are presentation artwork, not added
+plugin UI or a recording of a complete desktop. No public users are involved.
 
-    git clone https://github.com/decadentsavant/baton-relay.git ../baton-relay
-    (cd ../baton-relay && go build -o baton-relay .)
-    ./dev/preview.sh
+## Pacing
 
-The script uses an offscreen QML window, temporary identities, and port 18081
-(override with `BATON_PREVIEW_PORT`). `BIN` can select another built relay.
-It does not enable the plugin, alter the user's shell configuration, write to
-the clipboard, or contact public Baton users. Desktop notifications are
-suppressed in the isolated demo's copy of the shell utility.
+| Video time | Visible step |
+|---|---|
+| 0–4 seconds | Ready to receive a hello. |
+| 4–12 seconds | A wave arrives with a baton. |
+| 12–16 seconds | A second wave leaves the held baton intact. |
+| 16–22 seconds | The widget's actual left-click handler passes it on. |
+| 22–27 seconds | Closing explanation. |
 
-Two widget instances verify that multiple monitors share one connection. A
-local stranger passes a baton, sends a plain wave (which must preserve it),
-then receives the baton back. These are assertions against the live service;
-frame capture uses Qt's renderer, not hand-drawn replacement widget artwork.
+The captions stay visible after the brief widget animation ends. Frame counts
+control these reading times, so a slow render cannot shorten them. Network
+requests wait for scene markers; captures pause while awaiting each result.
+The 20 fps encode contains 540 completed frames. The still uses frame 140.
 
-The demo writes logs and PNG frames into its printed `/tmp/baton-demo.*`
-directory and stops its own processes on exit. Draft media goes into `docs/`
-by default. Set `BATON_PREVIEW_OUTPUT` to a temporary directory to run the
-integration assertions without replacing the drafts.
+## Regenerate
 
-These assets are pending replacement and are not the final marketplace preview.
-When the replacement still is approved, place it at the repository root as
-`preview.webp` (or another supported preview format) for automatic discovery.
-The marketplace preview is optional; keep drafts here until then.
+From the client repository root, with Go, Quickshell, curl, Python 3, and ffmpeg:
+
+```bash
+git clone https://github.com/decadentsavant/baton-relay.git ../baton-relay
+(cd ../baton-relay && go build -o baton-relay .)
+./dev/preview.sh
+```
+
+Skip cloning if the separate relay checkout already exists. `BIN` can select
+another built relay. The script uses an offscreen software renderer, temporary
+identities, and port 18081 (override with `BATON_PREVIEW_PORT`). It does not
+enable the plugin, change the user's shell configuration, write to the clipboard,
+or contact public Baton users. Desktop notifications are logged instead of
+sent in the isolated copy of the shell utility.
+
+Two widget instances verify that multiple monitors share one connection.
+Assertions cover receipt, plain-wave retention, baton handoff, completed send,
+and disconnecting after both widgets are released.
+
+Logs and PNG frames stay in the printed `/tmp/baton-demo.*` directory. The
+script stops its own processes on exit. Set `BATON_PREVIEW_OUTPUT` to a
+temporary directory to write `preview.webp` and `docs/preview.mp4` there instead
+of replacing the repository assets.
+
+## Theme compatibility
+
+The client uses Omarchy's `BarIconButton`: foreground and active colors and
+font family come from the host bar, while font size and slot size come from
+`Style`. Tooltip and notification surfaces are rendered by Omarchy. The client
+has no hard-coded color palette.
+
+An isolated check on 2026-09-06 exercised all 22 installed theme palettes, three
+states (ready, holding a baton, offline), and font base sizes 12 and 18: 132
+cases, each with horizontal and vertical widgets. Property bindings and positive
+widget dimensions passed. Light and dark renders were visually inspected.
+This check injected state into an isolated copy with identity startup disabled;
+it did not switch the desktop theme or contact a relay. The separate live-relay
+demo above checks the network behavior.

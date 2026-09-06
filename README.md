@@ -2,9 +2,10 @@
 
 **Wave at a random Omarchy user, somewhere in the world. One bit out, one bit back.**
 
-Preview artwork is being revised before marketplace submission. The existing
-[image](docs/preview.webp) and [video](docs/preview.mp4) are draft local demos,
-not the final listing assets.
+![Baton: a wave arrives from another Omarchy user](preview.webp)
+
+[Watch the 27-second demo](docs/preview.mp4). It shows the real widget at 7×
+magnification, with an isolated local relay and explanatory captions.
 
 Click the hand in your Omarchy bar. Somewhere, a stranger's bar pulses:
 
@@ -172,7 +173,7 @@ You can only wave at people using the same relay; instances do not federate.
 | Key | Default | Meaning |
 |---|---|---|
 | `relayUrl` | `https://relay.baton.buzz` | Relay to use. |
-| `shareRegion` | `true` | Include your country with waves. |
+| `shareRegion` | `true` | Include your country with waves. Set to `false` to arrive as “somewhere”. |
 | `sound` | `false` | Play a chime for incoming waves. |
 | `showCounter` | `true` | Show aggregate counters in the tooltip. |
 
@@ -181,6 +182,12 @@ the word rather than the value:
 
 ```bash
 omarchy bar set io.github.decadentsavant.baton sound true --json
+```
+
+Country sharing is enabled by default, but it is optional and can be turned off:
+
+```bash
+omarchy bar set io.github.decadentsavant.baton shareRegion false --json
 ```
 
 The widget also accepts the words, so either form works. Bar instances on a

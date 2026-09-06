@@ -1,6 +1,7 @@
 # Marketplace preparation
 
-No submission has been made. Replacement image and video work is still pending.
+No submission has been made. The revised still and 27-second video are ready
+for visual review.
 
 ## Listing values
 
@@ -38,11 +39,9 @@ Quickshell runtime test passes. Do not describe lint as warning-free.
 
 ## Before submitting later
 
-Replace the draft image and video. The current media remains under `docs/` and
-is not configured as the marketplace preview. Place the final still in the
-repository root as `preview.webp`, `preview.png`, `preview.jpg`, `preview.jpeg`,
-or `preview.avif`. A preview is optional; the marketplace discovers supported
-root filenames automatically. Update the README to show the final media.
+Review the new root `preview.webp` and `docs/preview.mp4`. The still is configured
+for marketplace discovery; the video is linked from the README. See
+[PREVIEW.md](PREVIEW.md) for pacing, regeneration, and theme checks.
 
 Recheck the permanent ID against the registry and rerun validation on the final
 commit. Review the ownership and submission checklist yourself, then use the
