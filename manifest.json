@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.decadentsavant.baton",
+  "name": "Baton",
+  "version": "0.3.1",
+  "author": "decadentsavant",
+  "license": "MIT",
+  "description": "Wave at a random Omarchy user somewhere in the world. One bit out, one bit back.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Baton.qml"
+  },
+  "barWidget": {
+    "displayName": "Baton",
+    "description": "Send a wave to a random Omarchy user. No names, no messages, no history.",
+    "category": "Info",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "relayUrl": "https://relay.baton.buzz",
+      "shareRegion": true,
+      "sound": false,
+      "showCounter": true
+    },
+    "schema": [
+      {
+        "key": "relayUrl",
+        "type": "string",
+        "label": "Relay URL",
+        "description": "Point this at your own relay to self-host.",
+        "defaultValue": "https://relay.baton.buzz"
+      },
+      {
+        "key": "shareRegion",
+        "type": "boolean",
+        "label": "Share my country with people I wave at",
+        "description": "Country only, never a city, never an address. Off means your waves arrive as 'somewhere'.",
+        "defaultValue": true
+      },
+      {
+        "key": "sound",
+        "type": "boolean",
+        "label": "Chime on incoming wave",
+        "defaultValue": false
+      },
+      {
+        "key": "showCounter",
+        "type": "boolean",
+        "label": "Show global wave counter in tooltip",
+        "defaultValue": true
+      }
+    ]
+  }
+}
