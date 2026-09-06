@@ -121,7 +121,6 @@ nothing until you click.
 | `shareRegion` | `true` | Include your country with waves. `false` arrives as "somewhere". |
 | `sound` | `false` | Chime on incoming waves. |
 | `showCounter` | `true` | Show the global counters in the tooltip. |
-| `relayUrl` | `https://relay.baton.buzz` | The relay to connect to. |
 
 The options popup on middle-click sets the first one. From a terminal, booleans
 need `--json`:

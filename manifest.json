@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.decadentsavant.baton",
   "name": "Baton",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "author": "decadentsavant",
   "license": "MIT",
   "description": "Wave at a random Omarchy user somewhere in the world. One bit out, one bit back.",
@@ -19,19 +19,11 @@
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
-      "relayUrl": "https://relay.baton.buzz",
       "shareRegion": true,
       "sound": false,
       "showCounter": true
     },
     "schema": [
-      {
-        "key": "relayUrl",
-        "type": "string",
-        "label": "Relay URL",
-        "description": "Point this at your own relay to self-host.",
-        "defaultValue": "https://relay.baton.buzz"
-      },
       {
         "key": "shareRegion",
         "type": "boolean",

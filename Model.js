@@ -5,7 +5,7 @@
 // Must match "version" in manifest.json; dev/model-test.js checks that. The
 // widget cannot read its own manifest cheaply, and the relay needs a number to
 // compare against, so the number lives here too.
-var VERSION = "0.4.0"
+var VERSION = "1.0.0"
 var PLUGIN_ID = "io.github.decadentsavant.baton"
 var UPDATE_COMMAND = "omarchy plugin update " + PLUGIN_ID
 
