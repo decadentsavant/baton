@@ -52,6 +52,8 @@ BarWidget {
     active: Local.BatonService.baton !== null
     tooltipText: Model.tooltipText({
       connected: Local.BatonService.connected,
+      identityError: Local.BatonService.identityError,
+      unreachable: Local.BatonService.unreachable,
       pending: Local.BatonService.pending,
       baton: Local.BatonService.baton,
       nowMs: Local.BatonService.nowMs,

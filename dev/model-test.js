@@ -6,7 +6,7 @@ const load = (file) => {
   const src = fs.readFileSync(path.join(__dirname, "..", file), "utf8")
   const sandbox = {}
   new Function("exports", src + "\n;Object.assign(exports, typeof NAMES !== 'undefined' ? {NAMES} : {" +
-    "parseFrame, flagFor, originLabel, waveHeadline, cooldownLabel, formatCount, tooltipText, backoffMs, ageLabel, batonLabel, cooldownDeadline, remainingSeconds, batonUrl, inviteText, asBool, tickMs, versionBefore, VERSION, PLUGIN_ID, UPDATE_COMMAND})")(sandbox)
+    "parseFrame, flagFor, originLabel, waveHeadline, cooldownLabel, formatCount, tooltipText, backoffMs, ageLabel, batonLabel, cooldownDeadline, remainingSeconds, batonUrl, inviteText, asBool, tickMs, versionBefore, VERSION, PLUGIN_ID, UPDATE_COMMAND, MAX_FRAME_CHARS, MAX_TEXT_CHARS, MAX_COOLDOWN_SECONDS, SLOW_RETRY_AFTER, SLOW_RETRY_MS})")(sandbox)
   return sandbox
 }
 
@@ -25,6 +25,20 @@ eq("parseFrame truncated line is dropped", M.parseFrame('{"type":"wa'), null)
 eq("parseFrame blank", M.parseFrame("   "), null)
 eq("parseFrame non-object", M.parseFrame('42'), null)
 eq("parseFrame missing type", M.parseFrame('{"origin":"PL"}'), null)
+
+// --- untrusted relay output ---
+eq("parseFrame drops a frame over the ceiling", M.parseFrame('{"type":"ping","pad":"' + "x".repeat(M.MAX_FRAME_CHARS) + '"}'), null)
+eq("parseFrame keeps a frame at the ceiling", M.parseFrame('{"type":"ping","pad":"' + "x".repeat(M.MAX_FRAME_CHARS - 24) + '"}'), { type: "ping" })
+eq("parseFrame drops unknown fields", M.parseFrame('{"type":"wave","origin":"PL","extra":{"deep":[1,2,3]}}'), { type: "wave", origin: "PL" })
+eq("parseFrame clips long strings", M.parseFrame('{"type":"wave","origin":"' + "P".repeat(500) + '","minClient":"' + "9".repeat(500) + '"}'),
+  { type: "wave", origin: "PPPPPPPP", minClient: "9".repeat(M.MAX_TEXT_CHARS) })
+eq("parseFrame drops non-finite and mistyped numbers", M.parseFrame('{"type":"stats","total":1e999,"online":"12","remaining":null}'), { type: "stats" })
+eq("parseFrame keeps only the boolean delivered", M.parseFrame('{"type":"cooldown","remaining":60,"delivered":"no"}'), { type: "cooldown", remaining: 60 })
+eq("parseFrame reduces the baton to its known facts",
+  M.parseFrame('{"type":"baton","baton":{"id":"abc","born":"2026-09-04T18:00:00Z","hops":3,"countries":2,"owner":"x","hops2":9}}'),
+  { type: "baton", baton: { id: "abc", born: "2026-09-04T18:00:00Z", hops: 3, countries: 2 } })
+eq("parseFrame drops a baton that is not an object", M.parseFrame('{"type":"state","remaining":0,"baton":"nope"}'), { type: "state", remaining: 0 })
+eq("parseFrame drops a null baton", M.parseFrame('{"type":"state","remaining":0,"baton":null}'), { type: "state", remaining: 0 })
 
 eq("flagFor PL", M.flagFor("PL"), "\u{1F1F5}\u{1F1F1}")
 eq("flagFor opted-out", M.flagFor("??"), "")
@@ -48,7 +62,9 @@ eq("formatCount small", M.formatCount(42), "42")
 
 eq("backoffMs first attempt", M.backoffMs(0), 1000)
 eq("backoffMs grows", M.backoffMs(4), 16000)
-eq("backoffMs caps", M.backoffMs(99), 60000)
+eq("backoffMs caps", M.backoffMs(M.SLOW_RETRY_AFTER - 1), 60000)
+eq("backoffMs slows once the relay looks gone", [M.backoffMs(M.SLOW_RETRY_AFTER), M.backoffMs(99)], [M.SLOW_RETRY_MS, M.SLOW_RETRY_MS])
+eq("backoffMs slow tail still jitters", M.backoffMs(99, 0), M.SLOW_RETRY_MS / 2)
 
 eq("tooltip offline", M.tooltipText({ connected: false }), "Baton — offline")
 eq("tooltip ready", M.tooltipText({ connected: true, showCounter: true, globalTotal: 1204891, online: 3847, countryNames: C.NAMES }),
@@ -84,6 +100,10 @@ eq("tooltip holding a baton", M.tooltipText({
 eq("deadline survives sleep", M.remainingSeconds(M.cooldownDeadline(3600, NOW), NOW + 3600000), 0)
 eq("deadline rounds up", M.remainingSeconds(NOW + 1001, NOW), 2)
 eq("invalid cooldown", M.cooldownDeadline(Infinity, NOW), NOW)
+eq("absurd cooldown is capped at a day", M.remainingSeconds(M.cooldownDeadline(1e12, NOW), NOW), M.MAX_COOLDOWN_SECONDS)
+eq("negative cooldown is zero", M.cooldownDeadline(-5, NOW), NOW)
+eq("tooltip when the relay looks gone", M.tooltipText({ connected: false, unreachable: true }), "Baton — offline\nCan't reach the relay \u2014 still retrying")
+eq("tooltip without an identity", M.tooltipText({ connected: false, identityError: true, unreachable: true }), "Baton — offline\nCould not create an identity \u2014 check ~/.local/state/baton")
 eq("jitter lower bound", M.backoffMs(3, 0), 4000)
 eq("jitter upper bound", M.backoffMs(3, 1), 8000)
 eq("baton link", M.batonUrl("https://relay.example/", { id: "a/b" }), "https://relay.example/b/a%2Fb")

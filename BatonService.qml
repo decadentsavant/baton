@@ -32,6 +32,10 @@ Scope {
   property double readyAt: 0
   property string minClient: ""
   property bool updateNotified: false
+  property bool identityError: false
+  // True once the relay has been out of reach long enough that the backoff
+  // has settled into its slow tail; the tooltip says so instead of "offline".
+  readonly property bool unreachable: reconnectAttempt >= Model.SLOW_RETRY_AFTER
   readonly property bool outdated: Model.versionBefore(Model.VERSION, minClient)
   readonly property int cooldownRemaining: Model.remainingSeconds(readyAt, nowMs)
   readonly property bool canWave: connected && !pending && identity !== "" && cooldownRemaining === 0
@@ -104,25 +108,50 @@ Scope {
   Process {
     id: identityProc
     running: true
-    // flock also makes simultaneous first starts in separate shells safe.
-    command: ["bash", "-c", "set -euo pipefail; umask 077; d=\"${XDG_STATE_HOME:-$HOME/.local/state}/baton\"; mkdir -p \"$d\"; exec 9>\"$d/id.lock\"; flock 9; f=\"$d/id\"; if [ ! -s \"$f\" ]; then head -c 16 /dev/urandom | base32 | tr -d '=\\n' > \"$f.tmp\"; mv \"$f.tmp\" \"$f\"; fi; cat \"$f\""]
+    // flock also makes simultaneous first starts in separate shells safe. A
+    // file that does not hold one usable token (truncated, hand-edited, or
+    // corrupted) is replaced rather than left to disable the widget forever;
+    // the token was unusable anyway, so nothing of value is lost.
+    command: ["bash", "-c", "set -euo pipefail; export LC_ALL=C; umask 077; d=\"${XDG_STATE_HOME:-$HOME/.local/state}/baton\"; mkdir -p \"$d\"; exec 9>\"$d/id.lock\"; flock 9; f=\"$d/id\"; id=$(head -c 66 \"$f\" 2>/dev/null | head -n 1 || true); if ! [[ $id =~ ^[A-Za-z0-9_-]{8,64}$ ]]; then head -c 16 /dev/urandom | base32 | tr -d '=\\n' > \"$f.tmp\"; mv \"$f.tmp\" \"$f\"; id=$(cat \"$f\"); fi; printf '%s\\n' \"$id\""]
     stdout: StdioCollector {
       onStreamFinished: {
         var id = String(this.text || "").trim()
         if (!/^[A-Za-z0-9_-]{8,64}$/.test(id)) {
-          console.warn("Baton: no usable identity in ${XDG_STATE_HOME:-~/.local/state}/baton/id; delete the file to mint a new one")
+          root.identityError = true
+          console.warn("Baton: could not create an identity in ${XDG_STATE_HOME:-~/.local/state}/baton; check that the directory is writable")
           return
         }
+        root.identityError = false
         root.identity = id
         if (root.configured) root.startStream()
       }
     }
   }
 
+  // Both relay paths go through a byte ceiling before anything reaches the
+  // shell. SplitParser and StdioCollector buffer whatever curl hands them, so
+  // a relay that never sends a newline, or never stops sending, would grow the
+  // bar's memory until something else gave out. Legitimate frames are well
+  // under 1 KiB and the stream carries a few bytes a second, so the caps below
+  // are generous for a healthy relay and fatal for a hostile one: the filter
+  // exits, curl is killed, and the usual reconnect backoff takes over.
+  readonly property int maxLineBytes: Model.MAX_FRAME_CHARS
+  readonly property int maxStreamBytes: 1048576
+  // `head -c` is the per-connection ceiling. `fold -b` never holds more than
+  // one line width in memory, so a line that never ends reaches awk as full
+  // width chunks, and awk aborts on the first one; a real frame is far
+  // shorter and passes through untouched. Every stage is C, so a flooding
+  // relay costs a few milliseconds before the cap trips, not a busy core.
+  // LC_ALL=C makes both fold and awk count bytes rather than characters.
+  readonly property string streamScript: "set -o pipefail; export LC_ALL=C; " +
+    "exec 3< <(exec curl -fsSN --connect-timeout 10 --speed-limit 1 --speed-time 75 -H \"X-Baton-Id: $1\" -- \"$2/stream\"); pid=$!; " +
+    "trap 'kill \"$pid\" 2>/dev/null' EXIT; " +
+    "head -c \"$4\" <&3 | fold -b -w \"$3\" | awk -v max=\"$3\" 'length($0) >= max { exit 66 } { print; fflush() }'"
+
   Process {
     id: streamProc
-    command: ["curl", "-fsSN", "--connect-timeout", "10", "--speed-limit", "1", "--speed-time", "75",
-      "-H", "X-Baton-Id: " + root.identity, root.relayUrl + "/stream"]
+    command: ["bash", "-c", root.streamScript, "baton-stream", root.identity, root.relayUrl,
+      String(root.maxLineBytes), String(root.maxStreamBytes)]
     stdout: SplitParser {
       onRead: function(line) { root.handleFrame(line) }
     }
@@ -175,11 +204,18 @@ Scope {
     }
   }
 
+  // The reply is one small JSON object. `head -c` is a hard ceiling on what
+  // StdioCollector can accumulate, chunked or not. Past it the text is cut
+  // mid-object and fails to parse, so replyReceived stays false and onExited
+  // treats the wave as failed; once the excess outgrows the pipe buffer curl
+  // also takes a write error, which pipefail surfaces as a non-zero exit.
+  readonly property string waveScript: "set -o pipefail; " +
+    "curl -fsS --max-time 8 -X POST -H \"X-Baton-Id: $1\" -H \"X-Baton-Share-Region: $2\" -- \"$3/wave\" | head -c \"$4\""
+
   Process {
     id: waveProc
-    command: ["curl", "-fsS", "--max-time", "8", "-X", "POST",
-      "-H", "X-Baton-Id: " + root.identity,
-      "-H", "X-Baton-Share-Region: " + (root.shareRegion ? "1" : "0"), root.relayUrl + "/wave"]
+    command: ["bash", "-c", root.waveScript, "baton-wave", root.identity, (root.shareRegion ? "1" : "0"), root.relayUrl,
+      String(root.maxLineBytes)]
     stdout: StdioCollector {
       onStreamFinished: {
         if (root.waveGeneration !== root.generation) return

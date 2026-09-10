@@ -5,7 +5,7 @@
 // Must match "version" in manifest.json; dev/model-test.js checks that. The
 // widget cannot read its own manifest cheaply, and the relay needs a number to
 // compare against, so the number lives here too.
-var VERSION = "1.0.0"
+var VERSION = "1.0.1"
 var PLUGIN_ID = "io.github.decadentsavant.baton"
 var UPDATE_COMMAND = "omarchy plugin update " + PLUGIN_ID
 
@@ -19,17 +19,68 @@ var UPDATE_COMMAND = "omarchy plugin update " + PLUGIN_ID
 //
 // Anything unparseable is dropped rather than thrown: the stream is long-lived
 // and a single truncated line must not take the widget down.
+//
+// The relay is public and pluggable, so its output is untrusted. A frame
+// longer than MAX_FRAME_CHARS is dropped before JSON.parse runs (the shell
+// side enforces the same ceiling in bytes before the line is buffered at
+// all), and what survives is copied field by field onto a fresh object:
+// only the fields the widget uses, strings clipped, numbers finite, and the
+// baton reduced to its four known facts. Nothing else from the wire is kept.
+var MAX_FRAME_CHARS = 4096
+var MAX_TEXT_CHARS = 64
+
 function parseFrame(line) {
   var text = String(line || "").replace(/^\s+|\s+$/g, "")
   if (text === "") return null
+  if (text.length > MAX_FRAME_CHARS) return null
   try {
-    var frame = JSON.parse(text)
-    if (!frame || typeof frame !== "object") return null
-    if (typeof frame.type !== "string") return null
-    return frame
+    var raw = JSON.parse(text)
+    if (!raw || typeof raw !== "object") return null
+    if (typeof raw.type !== "string") return null
+    return sanitizeFrame(raw)
   } catch (e) {
     return null
   }
+}
+
+function clipText(value, max) {
+  return typeof value === "string" ? value.slice(0, max) : undefined
+}
+
+function finiteNumber(value) {
+  return typeof value === "number" && isFinite(value) ? value : undefined
+}
+
+function sanitizeBaton(raw) {
+  if (!raw || typeof raw !== "object") return undefined
+  var baton = {}
+  var id = clipText(raw.id, 128)
+  var born = clipText(raw.born, MAX_TEXT_CHARS)
+  var hops = finiteNumber(raw.hops)
+  var countries = finiteNumber(raw.countries)
+  if (id !== undefined) baton.id = id
+  if (born !== undefined) baton.born = born
+  if (hops !== undefined) baton.hops = hops
+  if (countries !== undefined) baton.countries = countries
+  return baton
+}
+
+function sanitizeFrame(raw) {
+  var frame = { type: clipText(raw.type, MAX_TEXT_CHARS) }
+  var origin = clipText(raw.origin, 8)
+  var minClient = clipText(raw.minClient, MAX_TEXT_CHARS)
+  var remaining = finiteNumber(raw.remaining)
+  var total = finiteNumber(raw.total)
+  var online = finiteNumber(raw.online)
+  var baton = sanitizeBaton(raw.baton)
+  if (origin !== undefined) frame.origin = origin
+  if (minClient !== undefined) frame.minClient = minClient
+  if (remaining !== undefined) frame.remaining = remaining
+  if (total !== undefined) frame.total = total
+  if (online !== undefined) frame.online = online
+  if (typeof raw.delivered === "boolean") frame.delivered = raw.delivered
+  if (baton !== undefined) frame.baton = baton
+  return frame
 }
 
 // Settings arrive as whatever shell.json holds. The settings panel writes real
@@ -100,7 +151,11 @@ function tooltipText(state) {
   var s = state || {}
   var lines = []
 
-  if (!s.connected) lines.push("Baton — offline")
+  if (!s.connected) {
+    lines.push("Baton — offline")
+    if (s.identityError) lines.push("Could not create an identity \u2014 check ~/.local/state/baton")
+    else if (s.unreachable) lines.push("Can't reach the relay \u2014 still retrying")
+  }
   else if (s.pending) lines.push("Sending a wave…")
   else if (s.cooldownRemaining > 0) lines.push("Next wave in " + cooldownLabel(s.cooldownRemaining))
   else if (s.baton) lines.push("Click to pass the baton on")
@@ -175,16 +230,27 @@ function versionBefore(current, minimum) {
 
 // Reconnect backoff, capped. The relay holds an idle connection open for
 // minutes at a time, so a tight retry loop after a network blip would hammer
-// it for no benefit.
+// it for no benefit. Once the relay has been out of reach for a while (a
+// laptop off the network, a relay that has gone away) the retry slows to
+// SLOW_RETRY_MS so a dead relay costs one curl every few minutes, not every
+// minute, for the rest of the session.
+var SLOW_RETRY_AFTER = 10
+var SLOW_RETRY_MS = 300000
+
 function backoffMs(attempt, random) {
   var n = Math.max(0, Math.floor(Number(attempt) || 0))
-  var cap = Math.min(60000, 1000 * Math.pow(2, Math.min(n, 6)))
+  var cap = n >= SLOW_RETRY_AFTER ? SLOW_RETRY_MS : Math.min(60000, 1000 * Math.pow(2, Math.min(n, 6)))
   return typeof random === "number" ? Math.floor(cap * (0.5 + Math.max(0, Math.min(1, random)) * 0.5)) : cap
 }
 
+// The relay decides the cooldown, but a relay is untrusted input like any
+// other, so one absurd number must not park the button for the rest of the
+// session. The real cooldown is measured in minutes; a day is the ceiling.
+var MAX_COOLDOWN_SECONDS = 86400
+
 function cooldownDeadline(seconds, nowMs) {
   var value = Number(seconds)
-  return nowMs + (isFinite(value) ? Math.max(0, value) : 0) * 1000
+  return nowMs + (isFinite(value) ? Math.min(MAX_COOLDOWN_SECONDS, Math.max(0, value)) : 0) * 1000
 }
 
 function remainingSeconds(deadline, nowMs) {
