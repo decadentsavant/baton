@@ -138,15 +138,24 @@ Scope {
   readonly property int maxLineBytes: Model.MAX_FRAME_CHARS
   readonly property int maxStreamBytes: 1048576
   // `head -c` is the per-connection ceiling. `fold -b` never holds more than
-  // one line width in memory, so a line that never ends reaches awk as full
-  // width chunks, and awk aborts on the first one; a real frame is far
-  // shorter and passes through untouched. Every stage is C, so a flooding
-  // relay costs a few milliseconds before the cap trips, not a busy core.
-  // LC_ALL=C makes both fold and awk count bytes rather than characters.
-  readonly property string streamScript: "set -o pipefail; export LC_ALL=C; " +
+  // one line width in memory, so a line that never ends reaches sed as full
+  // width chunks, and sed quits with an error on the first one; a real frame
+  // is far shorter and passes through untouched. Every stage is C, so a
+  // flooding relay costs a few milliseconds before a cap trips, not a busy
+  // core. sed is the foreground command and the other stages feed it from a
+  // process substitution, so the moment sed quits the script exits, the trap
+  // kills curl, and head and fold end on EOF; a plain pipeline would instead
+  // wait for head, which may be blocked on a relay that has gone quiet.
+  // Buffering matters on a live stream: head and fold buffer when writing to
+  // a pipe, so stdbuf makes them stream, and sed runs unbuffered. Without
+  // that, frames would sit in a 4 KiB buffer for half an hour before the bar
+  // saw them. sed rather than awk because mawk fills its input buffer before
+  // it processes a line, and there is no telling which awk a machine has.
+  // LC_ALL=C makes fold and sed count bytes rather than characters.
+  readonly property string streamScript: "export LC_ALL=C; " +
     "exec 3< <(exec curl -fsSN --connect-timeout 10 --speed-limit 1 --speed-time 75 -H \"X-Baton-Id: $1\" -- \"$2/stream\"); pid=$!; " +
     "trap 'kill \"$pid\" 2>/dev/null' EXIT; " +
-    "head -c \"$4\" <&3 | fold -b -w \"$3\" | awk -v max=\"$3\" 'length($0) >= max { exit 66 } { print; fflush() }'"
+    "sed -u \"/^.\\\\{$3\\\\}/Q66\" < <(stdbuf -o0 head -c \"$4\" <&3 | stdbuf -oL fold -b -w \"$3\")"
 
   Process {
     id: streamProc

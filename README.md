@@ -108,7 +108,7 @@ nothing until you click.
 | Dependency | Purpose |
 |---|---|
 | `curl` | HTTPS stream and wave requests to the relay. |
-| `bash`, coreutils, `awk`, `flock` (util-linux) | Create and read the local random identity under a file lock, and cap what the relay may send. |
+| `bash`, coreutils, `sed`, `flock` (util-linux) | Create and read the local random identity under a file lock, and cap what the relay may send. |
 | `omarchy-notification-send` | Incoming-wave and clipboard notifications. |
 | `xdg-open` (xdg-utils) | Open the batons page on right-click. |
 | `wl-copy` (wl-clipboard) | Copy an invite. |
