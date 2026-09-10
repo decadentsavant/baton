@@ -6,7 +6,7 @@ const load = (file) => {
   const src = fs.readFileSync(path.join(__dirname, "..", file), "utf8")
   const sandbox = {}
   new Function("exports", src + "\n;Object.assign(exports, typeof NAMES !== 'undefined' ? {NAMES} : {" +
-    "parseFrame, flagFor, originLabel, waveHeadline, cooldownLabel, formatCount, tooltipText, backoffMs, ageLabel, batonLabel, cooldownDeadline, remainingSeconds, batonUrl, inviteText, asBool, tickMs, versionBefore, VERSION, PLUGIN_ID, UPDATE_COMMAND, MAX_FRAME_CHARS, MAX_TEXT_CHARS, MAX_COOLDOWN_SECONDS, SLOW_RETRY_AFTER, SLOW_RETRY_MS})")(sandbox)
+    "parseFrame, flagFor, originLabel, waveHeadline, cooldownLabel, formatCount, tooltipText, backoffMs, ageLabel, batonLabel, cooldownDeadline, remainingSeconds, batonUrl, inviteText, asBool, tickMs, versionBefore, VERSION, PLUGIN_ID, UPDATE_COMMAND, RESTART_COMMAND, MAX_FRAME_CHARS, MAX_TEXT_CHARS, MAX_COOLDOWN_SECONDS, SLOW_RETRY_AFTER, SLOW_RETRY_MS})")(sandbox)
   return sandbox
 }
 
@@ -67,6 +67,12 @@ eq("backoffMs slows once the relay looks gone", [M.backoffMs(M.SLOW_RETRY_AFTER)
 eq("backoffMs slow tail still jitters", M.backoffMs(99, 0), M.SLOW_RETRY_MS / 2)
 
 eq("tooltip offline", M.tooltipText({ connected: false }), "Baton — offline")
+eq("tooltip stale while offline", M.tooltipText({ connected: false, stale: true, unreachable: true }),
+  "Baton — offline\nUpdate installed \u2014 finish it with " + M.RESTART_COMMAND)
+eq("tooltip stale while connected", M.tooltipText({ connected: true, stale: true }),
+  "Click to wave at an Omarch\nUpdate installed \u2014 finish it with " + M.RESTART_COMMAND)
+eq("tooltip prefers the relay's update hint over stale", M.tooltipText({ connected: true, stale: true, outdated: true }),
+  "Click to wave at an Omarch\nUpdate available \u2014 " + M.UPDATE_COMMAND)
 eq("tooltip ready", M.tooltipText({ connected: true, showCounter: true, globalTotal: 1204891, online: 3847, countryNames: C.NAMES }),
   "Click to wave at an Omarch\n1,204,891 waves sent\n3,847 online now")
 eq("tooltip cooling down", M.tooltipText({ connected: true, cooldownRemaining: 1800, lastOrigin: "JP", countryNames: C.NAMES }),

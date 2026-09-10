@@ -2,7 +2,6 @@ import QtQuick
 import Quickshell
 import qs.Commons
 import qs.Ui
-import "." as Local
 import "Model.js" as Model
 import "Countries.js" as Countries
 
@@ -19,7 +18,39 @@ BarWidget {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  function configure() { Local.BatonService.configure(relayUrl, shareRegion, soundEnabled) }
+  // The shared BatonService instance. The host creates one per shell from the
+  // manifest's service entry and replaces it on every plugin reload, so its
+  // relay connection ends with it. The widget asks the host for it rather than
+  // importing a singleton, which a reload would not replace. A harness without
+  // a bar (dev/Preview.qml) sets it directly.
+  property var service: null
+  property var retainedService: null
+  property int serviceTries: 0
+  readonly property int serviceTryLimit: 20
+  // svc is always an object, so bindings stay valid while the service is
+  // missing; every read is then undefined, which the tooltip treats as idle.
+  readonly property var svc: root.service || ({})
+  // An update is installed but not running (the service reads the version on
+  // disk), or the host never produced a service at all. A restart fixes both.
+  readonly property bool stale: root.svc.stale === true || (root.service === null && root.serviceTries >= root.serviceTryLimit)
+
+  function lookupService() {
+    return bar && bar.shell && typeof bar.shell.serviceFor === "function" ? bar.shell.serviceFor(moduleName) : null
+  }
+  function bindService() {
+    var next = lookupService() || root.service
+    if (next !== root.retainedService) {
+      if (root.retainedService) root.retainedService.release()
+      root.retainedService = next
+      root.service = next
+      if (next) {
+        next.retain()
+        configure()
+        console.log("Baton: widget " + Model.VERSION + " bound to service " + (next.version || "before 1.0.2"))
+      }
+    }
+  }
+  function configure() { if (root.service) root.service.configure(relayUrl, shareRegion, soundEnabled) }
   function close() { optionsOpen = false }
   function setShareRegion(value) {
     var entry = Object.assign({}, settings || {})
@@ -28,13 +59,22 @@ BarWidget {
     if (bar && bar.shell && typeof bar.shell.updateEntryInline === "function")
       bar.shell.updateEntryInline(moduleName, entry)
   }
-  Component.onCompleted: { Local.BatonService.retain(); configure() }
-  Component.onDestruction: Local.BatonService.release()
+  Component.onCompleted: bindService()
+  Component.onDestruction: if (root.retainedService) root.retainedService.release()
+  onBarChanged: bindService()
   onRelayUrlChanged: Qt.callLater(configure)
   onShareRegionChanged: Qt.callLater(configure)
   onSoundEnabledChanged: Qt.callLater(configure)
+  // Services are created before widgets on a normal reload; the retry covers
+  // a service that is still loading when the widget appears.
+  Timer {
+    interval: 500
+    repeat: true
+    running: root.service === null && root.serviceTries < root.serviceTryLimit
+    onTriggered: { root.serviceTries++; root.bindService() }
+  }
   Connections {
-    target: Local.BatonService
+    target: root.service
     function onReceived() { sent.stop(); handed.stop(); pulse.restart() }
     function onHanded() { sent.stop(); pulse.stop(); handed.restart() }
     function onSent() { pulse.stop(); handed.stop(); sent.restart() }
@@ -48,29 +88,30 @@ BarWidget {
     text: "\uDB86\uDC21" // nf-md-hand_wave, U+F1821
     slotSize: Style.bar.statusSlot
     fontSize: Style.font.caption
-    dimmed: !Local.BatonService.canWave
-    active: Local.BatonService.baton !== null
+    dimmed: !root.svc.canWave
+    active: !!root.svc.baton
     tooltipText: Model.tooltipText({
-      connected: Local.BatonService.connected,
-      identityError: Local.BatonService.identityError,
-      unreachable: Local.BatonService.unreachable,
-      pending: Local.BatonService.pending,
-      baton: Local.BatonService.baton,
-      nowMs: Local.BatonService.nowMs,
-      cooldownRemaining: Local.BatonService.cooldownRemaining,
-      nobodyAround: Local.BatonService.nobodyAround,
-      outdated: Local.BatonService.outdated,
-      lastOrigin: Local.BatonService.lastOrigin,
-      globalTotal: Local.BatonService.globalTotal,
-      online: Local.BatonService.online,
+      connected: root.svc.connected,
+      stale: root.stale,
+      identityError: root.svc.identityError,
+      unreachable: root.svc.unreachable,
+      pending: root.svc.pending,
+      baton: root.svc.baton,
+      nowMs: root.svc.nowMs,
+      cooldownRemaining: root.svc.cooldownRemaining,
+      nobodyAround: root.svc.nobodyAround,
+      outdated: root.svc.outdated,
+      lastOrigin: root.svc.lastOrigin,
+      globalTotal: root.svc.globalTotal,
+      online: root.svc.online,
       showCounter: root.showCounter,
       countryNames: Countries.NAMES
     }) + "\nRight-click: explore batons · Middle-click: options"
 
     onPressed: function(b) {
-      if (b === Qt.RightButton) Util.execArgv(["xdg-open", Model.batonUrl(root.relayUrl, Local.BatonService.baton)])
+      if (b === Qt.RightButton) Util.execArgv(["xdg-open", Model.batonUrl(root.relayUrl, root.svc.baton || null)])
       else if (b === Qt.MiddleButton) root.optionsOpen = !root.optionsOpen
-      else if (b === Qt.LeftButton) Local.BatonService.sendWave()
+      else if (b === Qt.LeftButton && root.service) root.service.sendWave()
     }
   }
 

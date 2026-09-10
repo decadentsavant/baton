@@ -5,6 +5,8 @@ import "Baton/Model.js" as Model
 
 ShellRoot {
   id: root
+  // In the shell the host creates this from the manifest; here we own it.
+  Plugin.BatonService { id: batonService }
   // Frames, rather than wall-clock sleeps, set the reading time in the video.
   readonly property int fps: 20
   readonly property var phaseSeconds: [4, 8, 4, 6, 5]
@@ -44,7 +46,7 @@ ShellRoot {
             id: firstWidget
             anchors.centerIn: parent
             scale: 7
-            sourceComponent: Plugin.Baton { settings: ({relayUrl:Quickshell.env("BATON_PREVIEW_RELAY")}) }
+            sourceComponent: Plugin.Baton { service: batonService; settings: ({relayUrl:Quickshell.env("BATON_PREVIEW_RELAY")}) }
           }
           Text { anchors.horizontalCenter: parent.horizontalCenter; y: 256; text: "ACTUAL WIDGET · 7× DETAIL"; color: root.secondary; font.pixelSize: 11; font.letterSpacing: 1 }
           Rectangle {
@@ -65,7 +67,7 @@ ShellRoot {
       Loader {
         id: secondWidget
         visible: false
-        sourceComponent: Plugin.Baton { settings: ({relayUrl:Quickshell.env("BATON_PREVIEW_RELAY")}) }
+        sourceComponent: Plugin.Baton { service: batonService; settings: ({relayUrl:Quickshell.env("BATON_PREVIEW_RELAY")}) }
       }
       Row {
         x: 60; y: 618; spacing: 12
@@ -81,14 +83,14 @@ ShellRoot {
 
   function enterPhase(next) { root.phase = next; root.phaseFrame = 0; root.waiting = false }
   Connections {
-    target: Plugin.BatonService
+    target: batonService
     function onReceived() {
       root.receivedCount++
       if (root.receivedCount === 1) {
-        root.receivedBaton = Plugin.BatonService.baton !== null
+        root.receivedBaton = batonService.baton !== null
         root.enterPhase(1)
       } else {
-        root.retainedBaton = Plugin.BatonService.baton !== null
+        root.retainedBaton = batonService.baton !== null
         root.enterPhase(2)
       }
     }
@@ -112,7 +114,7 @@ ShellRoot {
     else if (root.phase === 3) root.enterPhase(4)
     else {
       root.finished = true
-      console.log("BATON_CHECK " + JSON.stringify({connected:Plugin.BatonService.connected,received:root.receivedBaton,retained:root.retainedBaton,passed:Plugin.BatonService.baton === null,pending:Plugin.BatonService.pending}))
+      console.log("BATON_CHECK " + JSON.stringify({connected:batonService.connected,received:root.receivedBaton,retained:root.retainedBaton,passed:batonService.baton === null,pending:batonService.pending}))
       firstWidget.active = false
       secondWidget.active = false
       releaseTimer.start()
@@ -121,9 +123,9 @@ ShellRoot {
   Timer {
     interval: 50; running: !root.finished; repeat: true
     onTriggered: {
-      if (root.capturing || !Plugin.BatonService.connected) return
+      if (root.capturing || !batonService.connected) return
       if (root.waiting) {
-        if (root.phase === 2 && Plugin.BatonService.baton === null && !Plugin.BatonService.pending) root.enterPhase(3)
+        if (root.phase === 2 && batonService.baton === null && !batonService.pending) root.enterPhase(3)
         else return
       }
       root.capturing = true
@@ -137,7 +139,7 @@ ShellRoot {
   Timer {
     id: releaseTimer; interval: 1000
     onTriggered: {
-      console.log("BATON_RELEASE " + JSON.stringify({widgets:Plugin.BatonService.widgetCount,connected:Plugin.BatonService.connected}))
+      console.log("BATON_RELEASE " + JSON.stringify({widgets:batonService.widgetCount,connected:batonService.connected}))
       Qt.quit()
     }
   }

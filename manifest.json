@@ -2,14 +2,16 @@
   "schemaVersion": 1,
   "id": "io.github.decadentsavant.baton",
   "name": "Baton",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "decadentsavant",
   "license": "MIT",
   "description": "Wave at a random Omarchy user somewhere in the world. One bit out, one bit back.",
   "kinds": [
+    "service",
     "bar-widget"
   ],
   "entryPoints": {
+    "service": "BatonService.qml",
     "barWidget": "Baton.qml"
   },
   "barWidget": {

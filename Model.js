@@ -5,9 +5,10 @@
 // Must match "version" in manifest.json; dev/model-test.js checks that. The
 // widget cannot read its own manifest cheaply, and the relay needs a number to
 // compare against, so the number lives here too.
-var VERSION = "1.0.1"
+var VERSION = "1.0.2"
 var PLUGIN_ID = "io.github.decadentsavant.baton"
 var UPDATE_COMMAND = "omarchy plugin update " + PLUGIN_ID
+var RESTART_COMMAND = "omarchy-restart-shell"
 
 // One relay frame. The wire format is newline-delimited JSON rather than SSE
 // framing, because SplitParser already gives us line splitting for free and a
@@ -153,7 +154,8 @@ function tooltipText(state) {
 
   if (!s.connected) {
     lines.push("Baton — offline")
-    if (s.identityError) lines.push("Could not create an identity \u2014 check ~/.local/state/baton")
+    if (s.stale) lines.push("Update installed \u2014 finish it with " + RESTART_COMMAND)
+    else if (s.identityError) lines.push("Could not create an identity \u2014 check ~/.local/state/baton")
     else if (s.unreachable) lines.push("Can't reach the relay \u2014 still retrying")
   }
   else if (s.pending) lines.push("Sending a wave…")
@@ -162,6 +164,7 @@ function tooltipText(state) {
   else lines.push("Click to wave at an Omarch")
 
   if (s.outdated) lines.push("Update available \u2014 " + UPDATE_COMMAND)
+  else if (s.stale && s.connected) lines.push("Update installed \u2014 finish it with " + RESTART_COMMAND)
   if (s.baton) lines.push("Holding a baton \u2014 " + batonLabel(s.baton, s.nowMs))
   if (s.nobodyAround) lines.push("Your last wave found nobody online")
   if (s.lastOrigin) lines.push("Last wave from " + originLabel(s.lastOrigin, s.countryNames))

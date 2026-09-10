@@ -145,6 +145,12 @@ Omarchy does not update plugins on its own. If the relay ever needs a newer
 widget than yours, the tooltip gains an "Update available" line with the
 command above, and you get one notification per session.
 
+After an update, run `omarchy-restart-shell`. The shell reloads plugins when
+their files change but keeps running the code it already compiled, so the new
+version only starts with a fresh shell. If you forget, the widget notices that
+the installed version is newer than the running one and says so, once in a
+notification and in the tooltip until you restart.
+
 Removal keeps your identity in `~/.local/state/baton/` so a reinstall is the
 same stranger. Delete that folder to start fresh.
 

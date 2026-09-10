@@ -1,4 +1,3 @@
-pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -6,9 +5,23 @@ import qs.Commons
 import "Model.js" as Model
 import "Countries.js" as Countries
 
-// One connection per QML engine, shared by every monitor's widget.
+// One instance per shell, shared by every monitor's widget. The host creates
+// it from the manifest's service entry point and destroys it on every plugin
+// reload, which also ends the relay connection cleanly. Before 1.0.2 this was
+// a qmldir singleton, which outlived reloads.
+//
+// A reload does not load new code: the shell re-instantiates plugins from
+// its cached compile, so an update only runs after a shell restart. What a
+// reload does refresh is the manifest, which the host reads from disk and
+// injects here. Comparing its version with the one compiled into Model.js
+// tells the widget that an update is installed but not yet running.
 Scope {
   id: root
+  readonly property string version: Model.VERSION
+  // Injected by the host on creation, from the manifest.json on disk.
+  property var manifest: null
+  readonly property string installedVersion: manifest && typeof manifest.version === "string" ? manifest.version : ""
+  readonly property bool stale: installedVersion !== "" && installedVersion !== Model.VERSION
   readonly property string glyph: "\uDB86\uDC21" // nf-md-hand_wave, U+F1821
   property string relayUrl: "https://relay.baton.buzz"
   property bool shareRegion: true
@@ -42,6 +55,26 @@ Scope {
   signal received()
   signal handed()
   signal sent()
+
+  Component.onCompleted: console.log("Baton: service " + Model.VERSION + " started")
+  onConnectedChanged: if (root.connected) console.log("Baton: connected to " + root.relayUrl)
+  // Once per instance. The host recreates the service on every reload, so a
+  // user who updates and keeps working hears this once per update, not once
+  // per bar tick; the tooltip carries the hint until the restart.
+  onStaleChanged: {
+    if (!root.stale) return
+    console.log("Baton: " + root.installedVersion + " is installed but " + Model.VERSION + " is running; restart the shell")
+    Util.execArgv(["omarchy-notification-send", "--app-name", "Baton", "-u", "low", "-g", root.glyph,
+      "Baton " + root.installedVersion + " is installed", "The bar is still running " + Model.VERSION + ". Run: " + Model.RESTART_COMMAND])
+  }
+  // The host destroys this instance on reload. QProcess would kill the children
+  // on its own, but stopping them here keeps the teardown explicit and quiet.
+  Component.onDestruction: {
+    reconnectTimer.stop()
+    heartbeat.stop()
+    streamProc.running = false
+    waveProc.running = false
+  }
 
   function retain() { root.widgetCount++ }
   function release() {
