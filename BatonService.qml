@@ -25,7 +25,7 @@ Scope {
   readonly property string glyph: "\uDB86\uDC21" // nf-md-hand_wave, U+F1821
   property string relayUrl: "https://relay.baton.buzz"
   property bool shareRegion: true
-  property bool soundEnabled: false
+  property bool soundEnabled: true
   property bool configured: false
   property int widgetCount: 0
   property string identity: ""

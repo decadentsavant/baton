@@ -27,8 +27,8 @@ omarchy bar put io.github.decadentsavant.baton --section right
 Prefer the launcher? Press `Super` + `Space`, search for **Add Plugin**, and
 paste `https://github.com/decadentsavant/baton`.
 
-Then hover the hand. Left-click waves. Right-click opens
-[the batons page](https://relay.baton.buzz). Middle-click opens options.
+Then hover the hand. Left-click waves. Right-click opens options. Middle-click
+opens [the batons page](https://relay.baton.buzz).
 
 [Watch the 27-second demo](docs/preview.mp4) if you want to see a wave land
 before you install.
@@ -110,7 +110,7 @@ nothing until you click.
 | `curl` | HTTPS stream and wave requests to the relay. |
 | `bash`, coreutils, `sed`, `flock` (util-linux) | Create and read the local random identity under a file lock, and cap what the relay may send. |
 | `omarchy-notification-send` | Incoming-wave and clipboard notifications. |
-| `xdg-open` (xdg-utils) | Open the batons page on right-click. |
+| `xdg-open` (xdg-utils) | Open the batons page on middle-click. |
 | `wl-copy` (wl-clipboard) | Copy an invite. |
 | `mpv` (optional) | Play the bundled chime, `omarchy.mp3`, when `sound` is enabled. Without it, `pw-play` (pipewire-audio), then `canberra-gtk-play` (libcanberra). |
 
@@ -119,14 +119,14 @@ nothing until you click.
 | Key | Default | Meaning |
 |---|---|---|
 | `shareRegion` | `true` | Include your country with waves. `false` arrives as "somewhere". |
-| `sound` | `false` | Play the Omarchy chime on incoming waves. |
+| `sound` | `true` | Play the Omarchy chime on incoming waves. |
 | `showCounter` | `true` | Show the global counters in the tooltip. |
 
-The options popup on middle-click sets the first one. From a terminal, booleans
+The options popup on right-click sets the first two. From a terminal, booleans
 need `--json`:
 
 ```bash
-omarchy bar set io.github.decadentsavant.baton sound true --json
+omarchy bar set io.github.decadentsavant.baton sound false --json
 ```
 
 `omarchy-shell baton wave` sends a wave and `omarchy-shell baton invite` copies

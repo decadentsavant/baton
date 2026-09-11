@@ -12,7 +12,7 @@ BarWidget {
   // `omarchy bar set` stores plain values as strings unless told --json, so a
   // boolean setting may arrive as true or as "true". Both mean yes.
   readonly property bool shareRegion: Model.asBool(setting("shareRegion", true), true)
-  readonly property bool soundEnabled: Model.asBool(setting("sound", false), false)
+  readonly property bool soundEnabled: Model.asBool(setting("sound", true), true)
   readonly property bool showCounter: Model.asBool(setting("showCounter", true), true)
   property bool optionsOpen: false
   implicitWidth: button.implicitWidth
@@ -52,10 +52,10 @@ BarWidget {
   }
   function configure() { if (root.service) root.service.configure(relayUrl, shareRegion, soundEnabled) }
   function close() { optionsOpen = false }
-  function setShareRegion(value) {
+  function setSetting(key, value) {
     var entry = Object.assign({}, settings || {})
     entry.id = moduleName
-    entry.shareRegion = value
+    entry[key] = value
     if (bar && bar.shell && typeof bar.shell.updateEntryInline === "function")
       bar.shell.updateEntryInline(moduleName, entry)
   }
@@ -106,11 +106,11 @@ BarWidget {
       online: root.svc.online,
       showCounter: root.showCounter,
       countryNames: Countries.NAMES
-    }) + "\nRight-click: explore batons · Middle-click: options"
+    }) + "\nRight-click: options · Middle-click: explore batons"
 
     onPressed: function(b) {
-      if (b === Qt.RightButton) Util.execArgv(["xdg-open", Model.batonUrl(root.relayUrl, root.svc.baton || null)])
-      else if (b === Qt.MiddleButton) root.optionsOpen = !root.optionsOpen
+      if (b === Qt.RightButton) root.optionsOpen = !root.optionsOpen
+      else if (b === Qt.MiddleButton) Util.execArgv(["xdg-open", Model.batonUrl(root.relayUrl, root.svc.baton || null)])
       else if (b === Qt.LeftButton && root.service) root.service.sendWave()
     }
   }
@@ -153,7 +153,17 @@ BarWidget {
         checked: root.shareRegion
         foreground: root.bar ? root.bar.barForeground : Color.foreground
         accent: root.bar ? root.bar.urgent : Color.accent
-        onClicked: root.setShareRegion(!root.shareRegion)
+        onClicked: root.setSetting("shareRegion", !root.shareRegion)
+      }
+
+      Toggle {
+        width: parent.width
+        label: "Chime on incoming wave"
+        description: root.soundEnabled ? "A short sound plays when someone waves at you." : "Waves arrive silently, with only the pulse in the bar."
+        checked: root.soundEnabled
+        foreground: root.bar ? root.bar.barForeground : Color.foreground
+        accent: root.bar ? root.bar.urgent : Color.accent
+        onClicked: root.setSetting("sound", !root.soundEnabled)
       }
     }
   }

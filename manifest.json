@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.decadentsavant.baton",
   "name": "Baton",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "author": "decadentsavant",
   "license": "MIT",
   "description": "Wave at a random Omarchy user somewhere in the world. One bit out, one bit back.",
@@ -22,7 +22,7 @@
     "defaultSection": "right",
     "defaults": {
       "shareRegion": true,
-      "sound": false,
+      "sound": true,
       "showCounter": true
     },
     "schema": [
@@ -37,7 +37,7 @@
         "key": "sound",
         "type": "boolean",
         "label": "Chime on incoming wave",
-        "defaultValue": false
+        "defaultValue": true
       },
       {
         "key": "showCounter",
