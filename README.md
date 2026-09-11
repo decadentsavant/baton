@@ -112,14 +112,14 @@ nothing until you click.
 | `omarchy-notification-send` | Incoming-wave and clipboard notifications. |
 | `xdg-open` (xdg-utils) | Open the batons page on right-click. |
 | `wl-copy` (wl-clipboard) | Copy an invite. |
-| `canberra-gtk-play` (libcanberra, optional) | Chime when `sound` is enabled. |
+| `mpv` (optional) | Play the bundled chime, `omarchy.mp3`, when `sound` is enabled. Without it, `pw-play` (pipewire-audio), then `canberra-gtk-play` (libcanberra). |
 
 ## Settings
 
 | Key | Default | Meaning |
 |---|---|---|
 | `shareRegion` | `true` | Include your country with waves. `false` arrives as "somewhere". |
-| `sound` | `false` | Chime on incoming waves. |
+| `sound` | `false` | Play the Omarchy chime on incoming waves. |
 | `showCounter` | `true` | Show the global counters in the tooltip. |
 
 The options popup on middle-click sets the first one. From a terminal, booleans

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.decadentsavant.baton",
   "name": "Baton",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "author": "decadentsavant",
   "license": "MIT",
   "description": "Wave at a random Omarchy user somewhere in the world. One bit out, one bit back.",

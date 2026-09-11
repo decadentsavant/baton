@@ -102,6 +102,26 @@ Scope {
       "Baton has an update", "The relay supports Baton " + root.minClient + " or newer. Run: " + Model.UPDATE_COMMAND])
   }
 
+  // The chime ships with the plugin, next to this file, so it is the same on
+  // every install. Qt.resolvedUrl keeps the plugin directory even though the
+  // shell runs from a cached compile. mpv is an Omarchy base package and is
+  // what Omarchy's own hooks play sounds with. Without it, pw-play from the
+  // PipeWire stack Omarchy runs on plays the file; it decodes MP3 through
+  // libsndfile. Neither opens a window. The desktop theme's message sound is
+  // the last resort.
+  readonly property string chimePath: {
+    var url = String(Qt.resolvedUrl("omarchy.mp3"))
+    return url.indexOf("file://") === 0 ? decodeURIComponent(url.slice(7)) : ""
+  }
+  function chime() {
+    if (root.chimePath === "")
+      Util.execArgv(["canberra-gtk-play", "-i", "message-new-instant"])
+    else
+      Util.execArgv(["bash", "-c", 'if command -v mpv >/dev/null 2>&1; then exec mpv --no-video --really-quiet --no-config -- "$1"; fi; ' +
+        'if command -v pw-play >/dev/null 2>&1; then exec pw-play -- "$1"; fi; ' +
+        'exec canberra-gtk-play -i message-new-instant', "baton-chime", root.chimePath])
+  }
+
   function configure(url, share, sound) {
     if (root.widgetCount === 0) return
     var changed = root.relayUrl !== url
@@ -236,7 +256,7 @@ Scope {
       var body = frame.baton ? "passed you a baton — " + Model.batonLabel(frame.baton, root.nowMs) : "waved at you"
       Util.execArgv(["omarchy-notification-send", "--app-name", "Baton", "-u", "low", "-g", root.glyph,
         Model.waveHeadline(root.lastOrigin, Countries.NAMES), body])
-      if (root.soundEnabled) Util.execArgv(["canberra-gtk-play", "-i", "message-new-instant"])
+      if (root.soundEnabled) root.chime()
     } else if (frame.type === "baton") {
       root.baton = frame.baton || null
       root.handed()
