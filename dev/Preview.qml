@@ -60,7 +60,7 @@ ShellRoot {
         Text { x: 342; y: 139; text: root.bodies[root.phase]; color: root.ink; font.pixelSize: 23; lineHeight: 1.35 }
         Text {
           x: 342; y: 246
-          text: root.phase === 1 || root.phase === 2 ? "1 hop · born just now · 1 country" : root.phase === 3 ? "Wave sent. Baton passed." : "One wave an hour on the public relay."
+          text: root.phase === 1 || root.phase === 2 ? "1 hop · born just now · 1 country" : root.phase === 3 ? "Wave sent. Baton passed." : "One wave every 15 minutes on the public relay."
           color: root.lime; font.pixelSize: 17
         }
       }

@@ -52,12 +52,13 @@ A baton remembers only those three facts. Not who held it, not where it has
 been in order. It is a small story with no people in it, and you can share its
 page with anyone.
 
-## One wave an hour
+## One wave every 15 minutes
 
 A wave you could send every second would be worth nothing. The one you receive
-lands because the sender spent their hour on it. A wave into an empty room only
-costs a minute, and the widget tells you when that happens, so a click never
-silently does nothing.
+lands because the sender spent their turn on it. The public relay gives each
+sender one wave every 15 minutes. A wave into an empty room only costs a minute,
+and the widget tells you when that happens, so a click never silently does
+nothing.
 
 You cannot be cruel in one bit. There is no field to put an insult in, so Baton
 ships without a report button, a block list, or a moderation queue, because
