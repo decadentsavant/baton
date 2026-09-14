@@ -293,6 +293,10 @@ Scope {
           root.nobodyAround = true
           Util.execArgv(["omarchy-notification-send", "--app-name", "Baton", "-u", "low", "-g", root.glyph,
             "Nobody's around right now", "Your wave found an empty room. Try again in " + Model.cooldownLabel(root.cooldownRemaining) + "."])
+        } else if (frame.delivered === true) {
+          var confirmation = Model.outgoingNotification(frame.passed === true)
+          Util.execArgv(["omarchy-notification-send", "--app-name", "Baton", "-u", "low", "-g", root.glyph,
+            confirmation.title, confirmation.body])
         }
       }
     }

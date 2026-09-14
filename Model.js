@@ -80,8 +80,22 @@ function sanitizeFrame(raw) {
   if (total !== undefined) frame.total = total
   if (online !== undefined) frame.online = online
   if (typeof raw.delivered === "boolean") frame.delivered = raw.delivered
+  if (typeof raw.passed === "boolean") frame.passed = raw.passed
   if (baton !== undefined) frame.baton = baton
   return frame
+}
+
+// A confirmed send deserves a warmer acknowledgement than the button's quick
+// dip. Keep it anonymous, but make the person on the other end feel real.
+function outgoingNotification(passed) {
+  if (passed) return {
+    title: "Baton passed",
+    body: "It's in someone else's hands now. The story keeps moving."
+  }
+  return {
+    title: "Wave delivered",
+    body: "Someone out there received your hello. You made the community feel a little closer."
+  }
 }
 
 // Settings arrive as whatever shell.json holds. The settings panel writes real

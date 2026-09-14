@@ -6,7 +6,7 @@ const load = (file) => {
   const src = fs.readFileSync(path.join(__dirname, "..", file), "utf8")
   const sandbox = {}
   new Function("exports", src + "\n;Object.assign(exports, typeof NAMES !== 'undefined' ? {NAMES} : {" +
-    "parseFrame, flagFor, originLabel, waveHeadline, cooldownLabel, formatCount, tooltipText, backoffMs, ageLabel, batonLabel, cooldownDeadline, remainingSeconds, batonUrl, inviteText, asBool, tickMs, versionBefore, VERSION, PLUGIN_ID, UPDATE_COMMAND, RESTART_COMMAND, MAX_FRAME_CHARS, MAX_TEXT_CHARS, MAX_COOLDOWN_SECONDS, SLOW_RETRY_AFTER, SLOW_RETRY_MS})")(sandbox)
+    "parseFrame, flagFor, originLabel, waveHeadline, outgoingNotification, cooldownLabel, formatCount, tooltipText, backoffMs, ageLabel, batonLabel, cooldownDeadline, remainingSeconds, batonUrl, inviteText, asBool, tickMs, versionBefore, VERSION, PLUGIN_ID, UPDATE_COMMAND, RESTART_COMMAND, MAX_FRAME_CHARS, MAX_TEXT_CHARS, MAX_COOLDOWN_SECONDS, SLOW_RETRY_AFTER, SLOW_RETRY_MS})")(sandbox)
   return sandbox
 }
 
@@ -34,6 +34,8 @@ eq("parseFrame clips long strings", M.parseFrame('{"type":"wave","origin":"' + "
   { type: "wave", origin: "PPPPPPPP", minClient: "9".repeat(M.MAX_TEXT_CHARS) })
 eq("parseFrame drops non-finite and mistyped numbers", M.parseFrame('{"type":"stats","total":1e999,"online":"12","remaining":null}'), { type: "stats" })
 eq("parseFrame keeps only the boolean delivered", M.parseFrame('{"type":"cooldown","remaining":60,"delivered":"no"}'), { type: "cooldown", remaining: 60 })
+eq("parseFrame keeps a boolean baton pass", M.parseFrame('{"type":"cooldown","remaining":900,"delivered":true,"passed":true}'), { type: "cooldown", remaining: 900, delivered: true, passed: true })
+eq("parseFrame drops a mistyped baton pass", M.parseFrame('{"type":"cooldown","remaining":900,"passed":"yes"}'), { type: "cooldown", remaining: 900 })
 eq("parseFrame reduces the baton to its known facts",
   M.parseFrame('{"type":"baton","baton":{"id":"abc","born":"2026-09-04T18:00:00Z","hops":3,"countries":2,"owner":"x","hops2":9}}'),
   { type: "baton", baton: { id: "abc", born: "2026-09-04T18:00:00Z", hops: 3, countries: 2 } })
@@ -50,6 +52,14 @@ eq("originLabel opted-out", M.originLabel("??", C.NAMES), "somewhere")
 
 eq("waveHeadline", M.waveHeadline("SE", C.NAMES), "\u{1F1F8}\u{1F1EA}  Someone in Sweden")
 eq("waveHeadline opted-out reads as a sentence", M.waveHeadline("??", C.NAMES), "Someone, somewhere")
+eq("outgoing plain wave feels connected", M.outgoingNotification(false), {
+  title: "Wave delivered",
+  body: "Someone out there received your hello. You made the community feel a little closer."
+})
+eq("outgoing baton celebrates the handoff", M.outgoingNotification(true), {
+  title: "Baton passed",
+  body: "It's in someone else's hands now. The story keeps moving."
+})
 
 eq("cooldownLabel seconds", M.cooldownLabel(45), "45s")
 eq("cooldownLabel minutes", M.cooldownLabel(600), "10m")

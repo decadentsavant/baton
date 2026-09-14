@@ -110,7 +110,7 @@ nothing until you click.
 |---|---|
 | `curl` | HTTPS stream and wave requests to the relay. |
 | `bash`, coreutils, `sed`, `flock` (util-linux) | Create and read the local random identity under a file lock, and cap what the relay may send. |
-| `omarchy-notification-send` | Incoming-wave and clipboard notifications. |
+| `omarchy-notification-send` | Incoming- and outgoing-wave, update, and clipboard notifications. |
 | `xdg-open` (xdg-utils) | Open the batons page on middle-click. |
 | `wl-copy` (wl-clipboard) | Copy an invite. |
 | `mpv` (optional) | Play the bundled chime, `omarchy.mp3`, when `sound` is enabled. Without it, `pw-play` (pipewire-audio), then `canberra-gtk-play` (libcanberra). |
