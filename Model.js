@@ -5,7 +5,7 @@
 // Must match "version" in manifest.json; dev/model-test.js checks that. The
 // widget cannot read its own manifest cheaply, and the relay needs a number to
 // compare against, so the number lives here too.
-var VERSION = "1.0.4"
+var VERSION = "1.1.0"
 var PLUGIN_ID = "io.github.decadentsavant.baton"
 var UPDATE_COMMAND = "omarchy plugin update " + PLUGIN_ID
 var RESTART_COMMAND = "omarchy-restart-shell"
@@ -80,6 +80,7 @@ function sanitizeFrame(raw) {
   if (total !== undefined) frame.total = total
   if (online !== undefined) frame.online = online
   if (typeof raw.delivered === "boolean") frame.delivered = raw.delivered
+  if (typeof raw.passed === "boolean") frame.passed = raw.passed
   if (baton !== undefined) frame.baton = baton
   return frame
 }
@@ -146,32 +147,61 @@ function formatCount(n) {
   return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 }
 
-// Tooltip text, assembled from whatever the widget currently knows. Every
-// field is optional because the stream may not have delivered stats yet.
-function tooltipText(state) {
-  var s = state || {}
-  var lines = []
+// One primary story at a time. Connection and in-flight work take precedence;
+// transient events expire in the service so old successes never mask readiness.
+function cardState(s) {
+  s = s || {}
+  var wait = cooldownLabel(s.cooldownRemaining)
+  var result = function(key, title, body) { return { key: key, title: title, body: body } }
+  if (s.stale) return result("stale", "A fresh start needed", "Restart the shell to load your installed Baton update.")
+  if (s.identityError) return result("identity", "Baton couldn’t start", "Your local identity couldn’t be created. Check ~/.local/state/baton, then restart the shell.")
+  if (!s.connected) return result("offline", s.unreachable ? "Still trying to connect" : "Finding the community…",
+    s.lastEvent === "failed" ? "Delivery couldn’t be confirmed. Reconnecting to check your wave and baton." : "Your connection will return automatically. No need to keep this open.")
+  if (s.pending) return result("sending", "Sending your hello…", "Finding another desktop, somewhere in the world.")
+  if (s.lastEvent === "received") return result("received", waveHeadline(s.lastOrigin, s.countryNames), "waved at you. A small hello, all the way to your desktop.")
+  if (s.lastEvent === "received-baton") return result("received", waveHeadline(s.lastOrigin, s.countryNames), "passed you a baton. You’re part of its story now.")
+  if (s.lastEvent === "handed" && s.baton) return result("baton", "A baton found you", "A travelling hello is in your hands. Your next wave carries it on.")
+  if (s.lastEvent === "passed") return result("delivered", "And the story goes on", "Your hello carried a baton to another desktop.")
+  if (s.lastEvent === "delivered") return result("delivered", "You made someone’s bar wave", "A stranger received your hello. That’s a little less distance between you.")
+  if (s.nobodyAround) return result("empty", "A quiet moment out there", wait ? "Your wave found nobody available. Try again in " + wait + "." : "Your next hello is ready. Try again, or invite an Omarchy friend.")
+  if (s.baton) return result("baton", "The next hop is yours", wait ? "Keep it company. You can pass it on in " + wait + "." : "One wave, and this little story reaches another desktop.")
+  if (wait) return result("cooldown", "A little pause between hellos", "Your next wave is ready in " + wait + ". You can still receive one anytime.")
+  return result("ready", "Someone’s out there", "Send a small hello to a random Omarchy user. No words needed.")
+}
 
-  if (!s.connected) {
-    lines.push("Baton — offline")
-    if (s.stale) lines.push("Update installed \u2014 finish it with " + RESTART_COMMAND)
-    else if (s.identityError) lines.push("Could not create an identity \u2014 check ~/.local/state/baton")
-    else if (s.unreachable) lines.push("Can't reach the relay \u2014 still retrying")
-  }
-  else if (s.pending) lines.push("Sending a wave…")
-  else if (s.cooldownRemaining > 0) lines.push("Next wave in " + cooldownLabel(s.cooldownRemaining))
-  else if (s.baton) lines.push("Click to pass the baton on")
-  else lines.push("Click to wave at an Omarch")
+function cardAction(s) {
+  if (s.stale) return "Restart needed"
+  if (s.identityError) return "Setup needs attention"
+  if (!s.connected) return "Waiting for connection"
+  if (s.pending) return "Sending…"
+  if (s.cooldownRemaining > 0) return "Next wave in " + cooldownLabel(s.cooldownRemaining)
+  return s.baton ? "Pass the baton" : "Send a wave"
+}
 
-  if (s.outdated) lines.push("Update available \u2014 " + UPDATE_COMMAND)
-  else if (s.stale && s.connected) lines.push("Update installed \u2014 finish it with " + RESTART_COMMAND)
-  if (s.baton) lines.push("Holding a baton \u2014 " + batonLabel(s.baton, s.nowMs))
-  if (s.nobodyAround) lines.push("Your last wave found nobody online")
-  if (s.lastOrigin) lines.push("Last wave from " + originLabel(s.lastOrigin, s.countryNames))
-  if (s.showCounter && s.globalTotal > 0) lines.push(formatCount(s.globalTotal) + " waves sent")
-  if (s.showCounter && s.online > 0) lines.push(formatCount(s.online) + " online now")
+// Country history belongs to the person who received the waves, not the
+// relay. The local file is deliberately just an unordered set of country
+// codes: no timestamps, sequence, senders, or wave count.
+function countrySet(text, existing) {
+  var result = {}
+  var source = existing || {}
+  Object.keys(source).forEach(function(code) { if (source[code] === true) result[code] = true })
+  String(text || "").split(/\s+/).forEach(function(code) {
+    var cc = String(code || "").toUpperCase()
+    if (/^[A-Z]{2}$/.test(cc) && cc !== "XX") result[cc] = true
+  })
+  return result
+}
 
-  return lines.join("\n")
+function addCountry(countries, code) {
+  var cc = String(code || "").toUpperCase()
+  if (!/^[A-Z]{2}$/.test(cc) || cc === "XX" || cc === "??" || (countries && countries[cc] === true)) return countries || {}
+  var result = countrySet("", countries)
+  result[cc] = true
+  return result
+}
+
+function countryCount(countries) {
+  return Object.keys(countries || {}).filter(function(code) { return countries[code] === true }).length
 }
 
 // "alive since" in words. Deliberately coarse: a baton that has been going for

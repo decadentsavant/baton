@@ -38,8 +38,14 @@ Scope {
   property int reconnectAttempt: 0
   property double globalTotal: 0
   property int online: 0
+  property var receivedCountries: ({})
+  readonly property int receivedCountryCount: Model.countryCount(receivedCountries)
   property string lastOrigin: ""
   property bool nobodyAround: false
+  property string lastEvent: ""
+  property bool statsKnown: false
+  function showEvent(event) { root.lastEvent = event; eventTimer.restart() }
+  Timer { id: eventTimer; interval: 15000; onTriggered: root.lastEvent = "" }
   property var baton: null
   property double nowMs: Date.now()
   property double readyAt: 0
@@ -47,7 +53,7 @@ Scope {
   property bool updateNotified: false
   property bool identityError: false
   // True once the relay has been out of reach long enough that the backoff
-  // has settled into its slow tail; the tooltip says so instead of "offline".
+  // has settled into its slow tail; the card explains that it is still retrying.
   readonly property bool unreachable: reconnectAttempt >= Model.SLOW_RETRY_AFTER
   readonly property bool outdated: Model.versionBefore(Model.VERSION, minClient)
   readonly property int cooldownRemaining: Model.remainingSeconds(readyAt, nowMs)
@@ -60,7 +66,7 @@ Scope {
   onConnectedChanged: if (root.connected) console.log("Baton: connected to " + root.relayUrl)
   // Once per instance. The host recreates the service on every reload, so a
   // user who updates and keeps working hears this once per update, not once
-  // per bar tick; the tooltip carries the hint until the restart.
+  // per bar tick; the card carries the hint until the restart.
   onStaleChanged: {
     if (!root.stale) return
     console.log("Baton: " + root.installedVersion + " is installed but " + Model.VERSION + " is running; restart the shell")
@@ -93,7 +99,7 @@ Scope {
     root.minClient = ""
   }
 
-  // Once per session, and only when a relay actually says so. The tooltip
+  // Once per session, and only when a relay actually says so. The card
   // keeps the hint for as long as the widget stays behind.
   onOutdatedChanged: {
     if (!root.outdated || root.updateNotified) return
@@ -135,6 +141,8 @@ Scope {
       root.lastOrigin = ""
       root.nobodyAround = false
       root.globalTotal = 0
+      root.statsKnown = false
+      root.lastEvent = ""
       root.online = 0
       root.readyAt = 0
       root.minClient = ""
@@ -179,6 +187,37 @@ Scope {
         if (root.configured) root.startStream()
       }
     }
+  }
+
+  // Private, local-only history: an unordered set with no timestamps, wave
+  // counts, or sender identities. It is never sent back to the relay.
+  Process {
+    id: countryLoadProc
+    running: true
+    command: ["bash", "-c", "f=\"${XDG_STATE_HOME:-$HOME/.local/state}/baton/countries\"; test ! -f \"$f\" || sed -n '/^[A-Z][A-Z]$/p' \"$f\""]
+    stdout: StdioCollector {
+      onStreamFinished: root.receivedCountries = Model.countrySet(this.text, root.receivedCountries)
+    }
+  }
+  property var countryWriteQueue: []
+  function rememberCountry(code) {
+    var next = Model.addCountry(root.receivedCountries, code)
+    if (next === root.receivedCountries) return
+    root.receivedCountries = next
+    root.countryWriteQueue = root.countryWriteQueue.concat([String(code).toUpperCase()])
+    root.writeNextCountry()
+  }
+  function writeNextCountry() {
+    if (countryWriteProc.running || root.countryWriteQueue.length === 0) return
+    var queue = root.countryWriteQueue.slice()
+    var code = queue.shift()
+    root.countryWriteQueue = queue
+    countryWriteProc.command = ["bash", "-c", "set -euo pipefail; umask 077; d=\"${XDG_STATE_HOME:-$HOME/.local/state}/baton\"; mkdir -p \"$d\"; exec 9>\"$d/countries.lock\"; flock 9; f=\"$d/countries\"; grep -qxF -- \"$1\" \"$f\" 2>/dev/null || printf '%s\\n' \"$1\" >> \"$f\"", "baton-country", code]
+    countryWriteProc.running = true
+  }
+  Process {
+    id: countryWriteProc
+    onExited: root.writeNextCountry()
   }
 
   // Both relay paths go through a byte ceiling before anything reaches the
@@ -250,8 +289,10 @@ Scope {
       root.reconnectAttempt = 0
     } else if (frame.type === "wave") {
       root.lastOrigin = String(frame.origin || "")
+      root.rememberCountry(root.lastOrigin)
       root.nobodyAround = false
       if (frame.baton) root.baton = frame.baton
+      root.showEvent(frame.baton ? "received-baton" : "received")
       root.received()
       var body = frame.baton ? "passed you a baton — " + Model.batonLabel(frame.baton, root.nowMs) : "waved at you"
       Util.execArgv(["omarchy-notification-send", "--app-name", "Baton", "-u", "low", "-g", root.glyph,
@@ -259,8 +300,10 @@ Scope {
       if (root.soundEnabled) root.chime()
     } else if (frame.type === "baton") {
       root.baton = frame.baton || null
+      if (root.baton) root.showEvent("handed")
       root.handed()
     } else if (frame.type === "stats") {
+      root.statsKnown = true
       root.globalTotal = Math.max(0, Number(frame.total) || 0)
       root.online = Math.max(0, Number(frame.online) || 0)
     }
@@ -289,23 +332,28 @@ Scope {
         // Ownership only comes from the ordered stream. An old POST reply
         // must never clear a baton that arrived while the request was running.
         if (frame.delivered === false) {
-          // An empty room. Say so, or the click looks like it did nothing.
+          // The card explains the empty room and shows the retry countdown.
           root.nobodyAround = true
-          Util.execArgv(["omarchy-notification-send", "--app-name", "Baton", "-u", "low", "-g", root.glyph,
-            "Nobody's around right now", "Your wave found an empty room. Try again in " + Model.cooldownLabel(root.cooldownRemaining) + "."])
+        } else if (frame.delivered === true) {
+          root.nobodyAround = false
+          root.showEvent(frame.passed === true ? "passed" : "delivered")
         }
       }
     }
     onExited: function(exitCode) {
       Qt.callLater(function() {
         root.pending = false
-        if (root.waveGeneration === root.generation && (exitCode !== 0 || !root.replyReceived)) root.reconnect()
+        if (root.waveGeneration === root.generation && (exitCode !== 0 || !root.replyReceived)) {
+          root.showEvent("failed")
+          root.reconnect()
+        }
       })
     }
   }
   function sendWave() {
     if (!root.canWave || waveProc.running) return
     root.pending = true
+    root.lastEvent = ""
     root.nobodyAround = false
     root.replyReceived = false
     root.waveGeneration = root.generation
