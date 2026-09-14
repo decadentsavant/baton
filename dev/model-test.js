@@ -6,7 +6,7 @@ const load = (file) => {
   const src = fs.readFileSync(path.join(__dirname, "..", file), "utf8")
   const sandbox = {}
   new Function("exports", src + "\n;Object.assign(exports, typeof NAMES !== 'undefined' ? {NAMES} : {" +
-    "parseFrame, flagFor, originLabel, waveHeadline, outgoingNotification, cooldownLabel, formatCount, tooltipText, backoffMs, ageLabel, batonLabel, cooldownDeadline, remainingSeconds, batonUrl, inviteText, asBool, tickMs, versionBefore, VERSION, PLUGIN_ID, UPDATE_COMMAND, RESTART_COMMAND, MAX_FRAME_CHARS, MAX_TEXT_CHARS, MAX_COOLDOWN_SECONDS, SLOW_RETRY_AFTER, SLOW_RETRY_MS})")(sandbox)
+    "parseFrame, flagFor, originLabel, waveHeadline, outgoingNotification, cooldownLabel, formatCount, countrySet, addCountry, countryCount, tooltipText, backoffMs, ageLabel, batonLabel, cooldownDeadline, remainingSeconds, batonUrl, inviteText, asBool, tickMs, versionBefore, VERSION, PLUGIN_ID, UPDATE_COMMAND, RESTART_COMMAND, MAX_FRAME_CHARS, MAX_TEXT_CHARS, MAX_COOLDOWN_SECONDS, SLOW_RETRY_AFTER, SLOW_RETRY_MS})")(sandbox)
   return sandbox
 }
 
@@ -69,6 +69,12 @@ eq("cooldownLabel zero", M.cooldownLabel(0), "")
 
 eq("formatCount", M.formatCount(1204891), "1,204,891")
 eq("formatCount small", M.formatCount(42), "42")
+eq("country set accepts unique country codes", M.countrySet("PL\nSE\nPL\njunk\n"), { PL: true, SE: true })
+eq("country set merges local history", M.countrySet("JP", { PL: true }), { PL: true, JP: true })
+const countries = M.addCountry({ PL: true }, "se")
+eq("country set adds a received origin", countries, { PL: true, SE: true })
+eq("country count", M.countryCount(countries), 2)
+eq("country set ignores private origins", M.addCountry(countries, "??"), countries)
 
 eq("backoffMs first attempt", M.backoffMs(0), 1000)
 eq("backoffMs grows", M.backoffMs(4), 16000)
@@ -84,9 +90,11 @@ eq("tooltip stale while connected", M.tooltipText({ connected: true, stale: true
 eq("tooltip prefers the relay's update hint over stale", M.tooltipText({ connected: true, stale: true, outdated: true }),
   "Click to wave at an Omarch\nUpdate available \u2014 " + M.UPDATE_COMMAND)
 eq("tooltip ready", M.tooltipText({ connected: true, showCounter: true, globalTotal: 1204891, online: 3847, countryNames: C.NAMES }),
-  "Click to wave at an Omarch\n1,204,891 waves sent\n3,847 online now")
+  "Click to wave at an Omarch\n1,204,891 waves sent to Omarchs\n3,847 online now")
 eq("tooltip cooling down", M.tooltipText({ connected: true, cooldownRemaining: 1800, lastOrigin: "JP", countryNames: C.NAMES }),
   "Next wave in 30m\nLast wave from Japan")
+eq("tooltip names the community total", M.tooltipText({ connected: true, globalTotal: 120491, showCounter: true }),
+  "Click to wave at an Omarch\n120,491 waves sent to Omarchs")
 
 // --- batons ---
 const NOW = Date.parse("2026-09-04T18:00:00Z")

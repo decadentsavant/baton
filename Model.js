@@ -160,6 +160,32 @@ function formatCount(n) {
   return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 }
 
+// Country history belongs to the person who received the waves, not the
+// relay. The local file is deliberately just an unordered set of country
+// codes: no timestamps, sequence, senders, or wave count.
+function countrySet(text, existing) {
+  var result = {}
+  var source = existing || {}
+  Object.keys(source).forEach(function(code) { if (source[code] === true) result[code] = true })
+  String(text || "").split(/\s+/).forEach(function(code) {
+    var cc = String(code || "").toUpperCase()
+    if (/^[A-Z]{2}$/.test(cc) && cc !== "XX") result[cc] = true
+  })
+  return result
+}
+
+function addCountry(countries, code) {
+  var cc = String(code || "").toUpperCase()
+  if (!/^[A-Z]{2}$/.test(cc) || cc === "XX" || cc === "??" || (countries && countries[cc] === true)) return countries || {}
+  var result = countrySet("", countries)
+  result[cc] = true
+  return result
+}
+
+function countryCount(countries) {
+  return Object.keys(countries || {}).filter(function(code) { return countries[code] === true }).length
+}
+
 // Tooltip text, assembled from whatever the widget currently knows. Every
 // field is optional because the stream may not have delivered stats yet.
 function tooltipText(state) {
@@ -182,7 +208,7 @@ function tooltipText(state) {
   if (s.baton) lines.push("Holding a baton \u2014 " + batonLabel(s.baton, s.nowMs))
   if (s.nobodyAround) lines.push("Your last wave found nobody online")
   if (s.lastOrigin) lines.push("Last wave from " + originLabel(s.lastOrigin, s.countryNames))
-  if (s.showCounter && s.globalTotal > 0) lines.push(formatCount(s.globalTotal) + " waves sent")
+  if (s.showCounter && s.globalTotal > 0) lines.push(formatCount(s.globalTotal) + " waves sent to Omarchs")
   if (s.showCounter && s.online > 0) lines.push(formatCount(s.online) + " online now")
 
   return lines.join("\n")

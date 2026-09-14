@@ -38,6 +38,8 @@ Scope {
   property int reconnectAttempt: 0
   property double globalTotal: 0
   property int online: 0
+  property var receivedCountries: ({})
+  readonly property int receivedCountryCount: Model.countryCount(receivedCountries)
   property string lastOrigin: ""
   property bool nobodyAround: false
   property var baton: null
@@ -181,6 +183,37 @@ Scope {
     }
   }
 
+  // Private, local-only history: an unordered set with no timestamps, wave
+  // counts, or sender identities. It is never sent back to the relay.
+  Process {
+    id: countryLoadProc
+    running: true
+    command: ["bash", "-c", "f=\"${XDG_STATE_HOME:-$HOME/.local/state}/baton/countries\"; test ! -f \"$f\" || sed -n '/^[A-Z][A-Z]$/p' \"$f\""]
+    stdout: StdioCollector {
+      onStreamFinished: root.receivedCountries = Model.countrySet(this.text, root.receivedCountries)
+    }
+  }
+  property var countryWriteQueue: []
+  function rememberCountry(code) {
+    var next = Model.addCountry(root.receivedCountries, code)
+    if (next === root.receivedCountries) return
+    root.receivedCountries = next
+    root.countryWriteQueue = root.countryWriteQueue.concat([String(code).toUpperCase()])
+    root.writeNextCountry()
+  }
+  function writeNextCountry() {
+    if (countryWriteProc.running || root.countryWriteQueue.length === 0) return
+    var queue = root.countryWriteQueue.slice()
+    var code = queue.shift()
+    root.countryWriteQueue = queue
+    countryWriteProc.command = ["bash", "-c", "set -euo pipefail; umask 077; d=\"${XDG_STATE_HOME:-$HOME/.local/state}/baton\"; mkdir -p \"$d\"; exec 9>\"$d/countries.lock\"; flock 9; f=\"$d/countries\"; grep -qxF -- \"$1\" \"$f\" 2>/dev/null || printf '%s\\n' \"$1\" >> \"$f\"", "baton-country", code]
+    countryWriteProc.running = true
+  }
+  Process {
+    id: countryWriteProc
+    onExited: root.writeNextCountry()
+  }
+
   // Both relay paths go through a byte ceiling before anything reaches the
   // shell. SplitParser and StdioCollector buffer whatever curl hands them, so
   // a relay that never sends a newline, or never stops sending, would grow the
@@ -250,6 +283,7 @@ Scope {
       root.reconnectAttempt = 0
     } else if (frame.type === "wave") {
       root.lastOrigin = String(frame.origin || "")
+      root.rememberCountry(root.lastOrigin)
       root.nobodyAround = false
       if (frame.baton) root.baton = frame.baton
       root.received()

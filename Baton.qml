@@ -14,6 +14,8 @@ BarWidget {
   readonly property bool shareRegion: Model.asBool(setting("shareRegion", true), true)
   readonly property bool soundEnabled: Model.asBool(setting("sound", true), true)
   readonly property bool showCounter: Model.asBool(setting("showCounter", true), true)
+  readonly property color foreground: root.bar ? root.bar.barForeground : Color.foreground
+  readonly property color accent: root.bar ? root.bar.urgent : Color.accent
   property bool optionsOpen: false
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -121,7 +123,7 @@ BarWidget {
     bar: root.bar
     owner: root
     open: root.optionsOpen
-    contentWidth: optionsPopup.fittedContentWidth(Style.space(330))
+    contentWidth: optionsPopup.fittedContentWidth(Style.space(370))
     contentHeight: optionsPopup.fittedContentHeight(optionsColumn.implicitHeight)
 
     Column {
@@ -130,8 +132,8 @@ BarWidget {
       spacing: Style.space(10)
 
       Text {
-        text: "Baton options"
-        color: root.bar ? root.bar.barForeground : Color.foreground
+        text: "Your corner of Baton"
+        color: root.foreground
         font.family: root.bar ? root.bar.fontFamily : Style.font.family
         font.pixelSize: Style.font.subtitle
         font.bold: true
@@ -139,11 +141,81 @@ BarWidget {
 
       Text {
         width: parent.width
-        text: "Country sharing is a simple approximation based on your IP address. It shows a country when on, or “somewhere” when off."
-        color: root.bar ? root.bar.barForeground : Color.foreground
+        text: "Small hellos, moving between Omarchs around the world."
+        color: root.foreground
+        opacity: 0.72
         font.family: root.bar ? root.bar.fontFamily : Style.font.family
         font.pixelSize: Style.font.caption
         wrapMode: Text.WordWrap
+      }
+
+      Row {
+        width: parent.width
+        spacing: Style.space(8)
+
+        Repeater {
+          model: [
+            { value: Model.formatCount(root.svc.globalTotal || 0), label: "waves sent\nto Omarchs" },
+            { value: Model.formatCount(root.svc.receivedCountryCount || 0), label: "countries\nreached you" }
+          ]
+          Rectangle {
+            required property var modelData
+            width: (optionsColumn.width - Style.space(8)) / 2
+            height: Style.space(88)
+            radius: Style.space(8)
+            color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.08)
+            border.color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.28)
+            border.width: 1
+            Column {
+              anchors.centerIn: parent
+              spacing: Style.space(3)
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: modelData.value
+                color: root.accent
+                font.family: root.bar ? root.bar.fontFamily : Style.font.family
+                font.pixelSize: Math.round(Style.font.subtitle * 1.5)
+                font.bold: true
+              }
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                horizontalAlignment: Text.AlignHCenter
+                text: modelData.label
+                color: root.foreground
+                opacity: 0.72
+                font.family: root.bar ? root.bar.fontFamily : Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+            }
+          }
+        }
+      }
+
+      Row {
+        spacing: Style.space(7)
+        Rectangle {
+          width: Style.space(7); height: width; radius: width / 2
+          anchors.verticalCenter: parent.verticalCenter
+          color: root.svc.connected ? root.accent : root.foreground
+          opacity: root.svc.connected ? 1 : 0.45
+        }
+        Text {
+          text: root.svc.online > 0 ? Model.formatCount(root.svc.online) + " Omarchs online now" : "Waiting for the community"
+          color: root.foreground
+          opacity: 0.78
+          font.family: root.bar ? root.bar.fontFamily : Style.font.family
+          font.pixelSize: Style.font.caption
+        }
+      }
+
+      Rectangle { width: parent.width; height: 1; color: root.foreground; opacity: 0.12 }
+
+      Text {
+        text: "Your signal"
+        color: root.foreground
+        font.family: root.bar ? root.bar.fontFamily : Style.font.family
+        font.pixelSize: Style.font.caption
+        font.bold: true
       }
 
       Toggle {
@@ -151,8 +223,8 @@ BarWidget {
         label: "Show my country"
         description: root.shareRegion ? "Waves can show your approximate country." : "Waves arrive as “somewhere”."
         checked: root.shareRegion
-        foreground: root.bar ? root.bar.barForeground : Color.foreground
-        accent: root.bar ? root.bar.urgent : Color.accent
+        foreground: root.foreground
+        accent: root.accent
         onClicked: root.setSetting("shareRegion", !root.shareRegion)
       }
 
@@ -161,8 +233,8 @@ BarWidget {
         label: "Chime on incoming wave"
         description: root.soundEnabled ? "A short sound plays when someone waves at you." : "Waves arrive silently, with only the pulse in the bar."
         checked: root.soundEnabled
-        foreground: root.bar ? root.bar.barForeground : Color.foreground
-        accent: root.bar ? root.bar.urgent : Color.accent
+        foreground: root.foreground
+        accent: root.accent
         onClicked: root.setSetting("sound", !root.soundEnabled)
       }
     }

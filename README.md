@@ -87,7 +87,9 @@ you are holding. Paste it to a friend who runs Omarchy. Or send them
   a different stranger.
 - **Waves carry a country, never a city or address.** The relay works it out
   from your connecting address using a public-domain range list, then drops
-  it. Turn off *Share my country* and yours arrive as "somewhere".
+  it. Turn off *Share my country* and yours arrive as "somewhere". Your widget
+  keeps an unordered, local-only set of countries you have received waves from;
+  it stores no timestamps, sequence, senders, or per-country counts.
 - **The relay sees your IP while you are connected**, like any server. It
   hashes it with a salt that changes every restart, uses the hash only to cap
   waves per address, and never writes it down.
