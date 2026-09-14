@@ -1,7 +1,7 @@
-# Marketplace preparation
+# Marketplace maintenance
 
-No submission has been made. The revised still and 27-second video are ready
-for visual review.
+Baton is listed in the Omarchy plugin marketplace. Publish newer upstream
+commits through the marketplace's guarded plugin-update verification workflow.
 
 ## Listing values
 
