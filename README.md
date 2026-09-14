@@ -27,11 +27,9 @@ omarchy bar put io.github.decadentsavant.baton --section right
 Prefer the launcher? Press `Super` + `Space`, search for **Add Plugin**, and
 paste `https://github.com/decadentsavant/baton`.
 
-Then hover the hand. Left-click waves. Right-click opens options. Middle-click
+Then hover the hand to see your next wave, incoming hellos, and any baton in
+your hands. Left-click waves. Right-click pins the card open. Middle-click
 opens [the batons page](https://relay.baton.buzz).
-
-[Watch the 27-second demo](docs/preview.mp4) if you want to see a wave land
-before you install.
 
 ## What happens next
 
@@ -112,7 +110,7 @@ nothing until you click.
 |---|---|
 | `curl` | HTTPS stream and wave requests to the relay. |
 | `bash`, coreutils, `sed`, `flock` (util-linux) | Create and read the local random identity under a file lock, and cap what the relay may send. |
-| `omarchy-notification-send` | Incoming- and outgoing-wave, update, and clipboard notifications. |
+| `omarchy-notification-send` | Incoming-wave, update, and clipboard notifications. |
 | `xdg-open` (xdg-utils) | Open the batons page on middle-click. |
 | `wl-copy` (wl-clipboard) | Copy an invite. |
 | `mpv` (optional) | Play the bundled chime, `omarchy.mp3`, when `sound` is enabled. Without it, `pw-play` (pipewire-audio), then `canberra-gtk-play` (libcanberra). |
@@ -123,9 +121,9 @@ nothing until you click.
 |---|---|---|
 | `shareRegion` | `true` | Include your country with waves. `false` arrives as "somewhere". |
 | `sound` | `true` | Play the Omarchy chime on incoming waves. |
-| `showCounter` | `true` | Show the global counters in the tooltip. |
+| `showCounter` | `true` | Show the worldwide wave total in the card. |
 
-The options popup on right-click sets the first two. From a terminal, booleans
+The card’s Settings control sets the first two. From a terminal, booleans
 need `--json`:
 
 ```bash
@@ -145,19 +143,24 @@ omarchy plugin remove io.github.decadentsavant.baton
 ```
 
 Omarchy does not update plugins on its own. If the relay ever needs a newer
-widget than yours, the tooltip gains an "Update available" line with the
+widget than yours, the card gains an "Update available" line with the
 command above, and you get one notification per session.
 
 After an update, run `omarchy-restart-shell`. The shell reloads plugins when
 their files change but keeps running the code it already compiled, so the new
 version only starts with a fresh shell. If you forget, the widget notices that
 the installed version is newer than the running one and says so, once in a
-notification and in the tooltip until you restart.
+notification and in the card until you restart.
 
 Removal keeps your identity in `~/.local/state/baton/` so a reinstall is the
 same stranger. Delete that folder to start fresh.
 
 ## Development
+
+The card can be rendered with sample data using
+`bash dev/card-preview.sh`. It covers ready, incoming, baton, sending,
+delivery, cooldown, empty-room, offline, and recovery states without connecting
+to the relay. See [the card state map](docs/CARD-STATES.md).
 
 QML and JavaScript, loaded by the existing Omarchy shell. No build step.
 
@@ -166,9 +169,8 @@ node dev/model-test.js
 omarchy plugin validate .
 ```
 
-[`dev/preview.sh`](dev/preview.sh) runs the real widget against an isolated
-local relay and renders the demo video; [`dev/listing.sh`](dev/listing.sh)
-renders the preview card. See [the preview guide](docs/PREVIEW.md). The relay
-lives in [its own repository](https://github.com/decadentsavant/baton-relay).
+[`dev/listing.sh`](dev/listing.sh) renders the marketplace cover. See
+[the preview guide](docs/PREVIEW.md). The relay lives in
+[its own repository](https://github.com/decadentsavant/baton-relay).
 
 MIT licensed. See [LICENSE](LICENSE).

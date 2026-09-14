@@ -47,27 +47,15 @@
   .gh h4 { font-size: 26px; font-weight: 700 }
   .gh p { font-size: 22px; color: var(--lime); margin-top: 2px }
 
-  .right { position: absolute; left: 1010px; top: 92px; width: 900px }
+  .right { position: absolute; left: 1130px; top: 48px; width: 760px }
   .shot { padding: 0; overflow: hidden; border: 2px solid rgba(221,242,155,.45);
     box-shadow: 0 0 0 10px rgba(221,242,155,.06), 0 40px 120px rgba(0,0,0,.6), 0 0 90px rgba(221,242,155,.22) }
-  .shot img { display: block; width: 900px; height: auto }
-  .shot { position: relative }
-  .you { position: absolute; left: 464px; top: -2px; width: 50px; height: 50px; border-radius: 50%; border: 3px solid var(--lime); box-shadow: 0 0 0 4px rgba(16,32,26,.6), 0 0 24px var(--lime) }
-  .you-label { position: absolute; left: 300px; top: 10px; color: var(--lime); font-size: 19px; font-weight: 700; letter-spacing: .04em; text-shadow: 0 2px 8px rgba(0,0,0,.8) }
+  .shot img { display: block; width: 760px; height: auto }
   .cap { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding: 0 8px; color: var(--muted); font-size: 19px; letter-spacing: .08em; text-transform: uppercase }
   .cap b { color: var(--lime); font-weight: 600 }
 
-  .toast { position: absolute; width: 560px; padding: 22px 26px 24px; border-radius: 20px; background: rgba(15, 28, 21, .92);
-    border: 1px solid rgba(221,242,155,.3); box-shadow: 0 30px 80px rgba(0,0,0,.55) }
-  .toast .app { font-size: 16px; letter-spacing: .12em; text-transform: uppercase; color: var(--lime); display: flex; align-items: center; gap: 10px }
-  .toast .app .g { font-size: 22px }
-  .toast h5 { font-size: 30px; font-weight: 700; margin-top: 8px }
-  .toast p { font-size: 22px; color: var(--muted); margin-top: 4px }
-  .toast p em { color: var(--coral); font-style: normal }
-  .toast p .c { color: var(--lime); font-weight: 600 }
-
-  .foot { position: absolute; left: 1010px; bottom: 50px; width: 900px; display: flex; gap: 14px; flex-wrap: wrap }
-  .pill { padding: 12px 22px; border-radius: 999px; border: 1px solid rgba(221,242,155,.3); background: rgba(221,242,155,.08); font-size: 20px; color: var(--ink) }
+  .foot { position: absolute; left: 1130px; bottom: 38px; width: 760px; display: flex; gap: 12px; flex-wrap: wrap }
+  .pill { padding: 10px 18px; border-radius: 999px; border: 1px solid rgba(221,242,155,.3); background: rgba(221,242,155,.08); font-size: 18px; color: var(--ink) }
   .pill b { color: var(--lime); font-weight: 600 }
 </style>
 
@@ -86,8 +74,8 @@
   </div>
 
   <div class="card blurb">
-    <b>Baton</b> puts a hand in your bar. Click it, and somewhere in the world another
-    Omarchy user's bar <i>pulses</i>. They can wave back. One bit out, one bit back.
+    <b>Baton</b> puts a hand in your bar. Hover it to see the community, then click
+    and somewhere in the world another Omarchy user's bar <i>pulses</i>.
   </div>
 
   <div class="head"><div class="ic">★</div><span>What it does</span></div>
@@ -105,24 +93,13 @@
 </div>
 
 <div class="right">
-  <div class="card shot"><img src="bar.png" alt=""><div class="you"></div><div class="you-label">that’s Baton →</div></div>
-  <div class="cap"><span>Actual widget in the Omarchy bar</span><b>Hover for the tooltip</b></div>
-
-  <div class="toast" style="left: 30px; top: 372px; transform: rotate(-2.5deg)">
-    <div class="app"><span class="g mono">&#xF1821;</span> Baton</div>
-    <h5>🇵🇱  Someone in Poland</h5>
-    <p>waved at you</p>
-  </div>
-  <div class="toast" style="left: 270px; top: 516px; width: 600px; transform: rotate(1.8deg)">
-    <div class="app"><span class="g mono">&#xF1821;</span> Baton</div>
-    <h5>🇯🇵  Someone in Japan</h5>
-    <p>passed you a baton</p><p class="c" style="margin-top:2px">412 hops · alive 3 weeks · 23 countries</p>
-  </div>
+  <div class="card shot"><img src="card.png" alt="Baton hover card showing its ready state"></div>
+  <div class="cap"><span>Actual Baton hover card</span><b>Ready to wave</b></div>
 </div>
 
 <div class="foot">
   <div class="pill"><b>Left-click</b> wave</div>
-  <div class="pill"><b>Right-click</b> options</div>
+  <div class="pill"><b>Right-click</b> pin card</div>
   <div class="pill"><b>Middle-click</b> explore batons</div>
   <div class="pill mono">omarchy plugin add https://github.com/decadentsavant/baton.git --enable</div>
 </div>

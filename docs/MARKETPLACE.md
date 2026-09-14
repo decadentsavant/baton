@@ -27,10 +27,8 @@ omarchy plugin validate .
 node dev/model-test.js
 ```
 
-The isolated runtime demo also checks shared connections across widgets,
-plain-wave retention, baton handoff, cooldown, and releasing the last widget.
-See [PREVIEW.md](PREVIEW.md) to run it against the separate relay without
-changing the installed desktop or replacing the draft assets.
+The fixture renderer checks every card state without changing the installed
+desktop or contacting the public relay. See [CARD-STATES.md](CARD-STATES.md).
 
 On the current Omarchy installation, standalone `qmllint` needs a temporary
 import root mapping `qs` to the installed shell directory. It reports existing
@@ -39,9 +37,8 @@ Quickshell runtime test passes. Do not describe lint as warning-free.
 
 ## Before submitting later
 
-Review the root `preview.webp` listing card and `docs/preview.mp4`. The still is
-what the marketplace card shows; the video is linked from the README. See
-[PREVIEW.md](PREVIEW.md) for how each is produced and regenerated.
+Review the root `preview.webp`, which is what the marketplace card shows. See
+[PREVIEW.md](PREVIEW.md) for how it is produced and regenerated.
 
 Recheck the permanent ID against the registry and rerun validation on the final
 commit. Review the ownership and submission checklist yourself, then use the

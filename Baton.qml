@@ -16,7 +16,8 @@ BarWidget {
   readonly property bool showCounter: Model.asBool(setting("showCounter", true), true)
   readonly property color foreground: root.bar ? root.bar.barForeground : Color.foreground
   readonly property color accent: root.bar ? root.bar.urgent : Color.accent
-  property bool optionsOpen: false
+  property bool cardPinned: false
+  property bool hoverCardOpen: false
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
@@ -30,7 +31,7 @@ BarWidget {
   property int serviceTries: 0
   readonly property int serviceTryLimit: 20
   // svc is always an object, so bindings stay valid while the service is
-  // missing; every read is then undefined, which the tooltip treats as idle.
+  // missing; every read is then undefined, which the card treats as idle.
   readonly property var svc: root.service || ({})
   // An update is installed but not running (the service reads the version on
   // disk), or the host never produced a service at all. A restart fixes both.
@@ -53,7 +54,7 @@ BarWidget {
     }
   }
   function configure() { if (root.service) root.service.configure(relayUrl, shareRegion, soundEnabled) }
-  function close() { optionsOpen = false }
+  function close() { cardPinned = false; hoverCardOpen = false }
   function setSetting(key, value) {
     var entry = Object.assign({}, settings || {})
     entry.id = moduleName
@@ -92,150 +93,74 @@ BarWidget {
     fontSize: Style.font.caption
     dimmed: !root.svc.canWave
     active: !!root.svc.baton
-    tooltipText: Model.tooltipText({
-      connected: root.svc.connected,
-      stale: root.stale,
-      identityError: root.svc.identityError,
-      unreachable: root.svc.unreachable,
-      pending: root.svc.pending,
-      baton: root.svc.baton,
-      nowMs: root.svc.nowMs,
-      cooldownRemaining: root.svc.cooldownRemaining,
-      nobodyAround: root.svc.nobodyAround,
-      outdated: root.svc.outdated,
-      lastOrigin: root.svc.lastOrigin,
-      globalTotal: root.svc.globalTotal,
-      online: root.svc.online,
-      showCounter: root.showCounter,
-      countryNames: Countries.NAMES
-    }) + "\nRight-click: options · Middle-click: explore batons"
+    tooltipText: ""
+    onTooltipHoveredChanged: {
+      if (tooltipHovered) { hoverClose.stop(); hoverOpen.restart() }
+      else { hoverOpen.stop(); hoverClose.restart() }
+    }
 
     onPressed: function(b) {
-      if (b === Qt.RightButton) root.optionsOpen = !root.optionsOpen
+      if (b === Qt.RightButton) root.cardPinned = !root.cardPinned
       else if (b === Qt.MiddleButton) Util.execArgv(["xdg-open", Model.batonUrl(root.relayUrl, root.svc.baton || null)])
-      else if (b === Qt.LeftButton && root.service) root.service.sendWave()
+      else if (b === Qt.LeftButton && root.service && !root.stale) root.service.sendWave()
     }
   }
 
+  Timer {
+    id: hoverOpen
+    interval: 180
+    onTriggered: root.hoverCardOpen = true
+  }
+  Timer {
+    id: hoverClose
+    interval: 300
+    onTriggered: if (!button.tooltipHovered && !cardPopup.containsMouse) root.hoverCardOpen = false
+  }
+
   PopupCard {
-    id: optionsPopup
+    id: cardPopup
     anchorItem: button
     bar: root.bar
     owner: root
-    open: root.optionsOpen
-    contentWidth: optionsPopup.fittedContentWidth(Style.space(370))
-    contentHeight: optionsPopup.fittedContentHeight(optionsColumn.implicitHeight)
+    open: root.cardPinned || root.hoverCardOpen
+    triggerMode: root.cardPinned ? "click" : "hover"
+    contentWidth: cardPopup.fittedContentWidth(Style.space(370))
+    contentHeight: cardPopup.fittedContentHeight(card.implicitHeight)
+    onContainsMouseChanged: {
+      if (containsMouse) hoverClose.stop()
+      else if (!button.tooltipHovered) hoverClose.restart()
+    }
 
-    Column {
-      id: optionsColumn
-      width: parent.width
-      spacing: Style.space(10)
-
-      Text {
-        text: "Your corner of Baton"
-        color: root.foreground
-        font.family: root.bar ? root.bar.fontFamily : Style.font.family
-        font.pixelSize: Style.font.subtitle
-        font.bold: true
-      }
-
-      Text {
+    Flickable {
+      anchors.fill: parent
+      contentHeight: card.implicitHeight
+      clip: true
+      boundsBehavior: Flickable.StopAtBounds
+      flickableDirection: Flickable.VerticalFlick
+      BatonCard {
+        id: card
         width: parent.width
-        text: "Small hellos, moving between Omarchs around the world."
-        color: root.foreground
-        opacity: 0.72
-        font.family: root.bar ? root.bar.fontFamily : Style.font.family
-        font.pixelSize: Style.font.caption
-        wrapMode: Text.WordWrap
-      }
-
-      Row {
-        width: parent.width
-        spacing: Style.space(8)
-
-        Repeater {
-          model: [
-            { value: Model.formatCount(root.svc.globalTotal || 0), label: "waves sent\nto Omarchs" },
-            { value: Model.formatCount(root.svc.receivedCountryCount || 0), label: "countries\nreached you" }
-          ]
-          Rectangle {
-            required property var modelData
-            width: (optionsColumn.width - Style.space(8)) / 2
-            height: Style.space(88)
-            radius: Style.space(8)
-            color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.08)
-            border.color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.28)
-            border.width: 1
-            Column {
-              anchors.centerIn: parent
-              spacing: Style.space(3)
-              Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: modelData.value
-                color: root.accent
-                font.family: root.bar ? root.bar.fontFamily : Style.font.family
-                font.pixelSize: Math.round(Style.font.subtitle * 1.5)
-                font.bold: true
-              }
-              Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                horizontalAlignment: Text.AlignHCenter
-                text: modelData.label
-                color: root.foreground
-                opacity: 0.72
-                font.family: root.bar ? root.bar.fontFamily : Style.font.family
-                font.pixelSize: Style.font.caption
-              }
-            }
-          }
-        }
-      }
-
-      Row {
-        spacing: Style.space(7)
-        Rectangle {
-          width: Style.space(7); height: width; radius: width / 2
-          anchors.verticalCenter: parent.verticalCenter
-          color: root.svc.connected ? root.accent : root.foreground
-          opacity: root.svc.connected ? 1 : 0.45
-        }
-        Text {
-          text: root.svc.online > 0 ? Model.formatCount(root.svc.online) + " Omarchs online now" : "Waiting for the community"
-          color: root.foreground
-          opacity: 0.78
-          font.family: root.bar ? root.bar.fontFamily : Style.font.family
-          font.pixelSize: Style.font.caption
-        }
-      }
-
-      Rectangle { width: parent.width; height: 1; color: root.foreground; opacity: 0.12 }
-
-      Text {
-        text: "Your signal"
-        color: root.foreground
-        font.family: root.bar ? root.bar.fontFamily : Style.font.family
-        font.pixelSize: Style.font.caption
-        font.bold: true
-      }
-
-      Toggle {
-        width: parent.width
-        label: "Show my country"
-        description: root.shareRegion ? "Waves can show your approximate country." : "Waves arrive as “somewhere”."
-        checked: root.shareRegion
         foreground: root.foreground
         accent: root.accent
-        onClicked: root.setSetting("shareRegion", !root.shareRegion)
-      }
-
-      Toggle {
-        width: parent.width
-        label: "Chime on incoming wave"
-        description: root.soundEnabled ? "A short sound plays when someone waves at you." : "Waves arrive silently, with only the pulse in the bar."
-        checked: root.soundEnabled
-        foreground: root.foreground
-        accent: root.accent
-        onClicked: root.setSetting("sound", !root.soundEnabled)
+        fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+        shareRegion: root.shareRegion
+        soundEnabled: root.soundEnabled
+        showCounter: root.showCounter
+        state: ({
+          connected: root.svc.connected, stale: root.stale,
+          identityError: root.svc.identityError, unreachable: root.svc.unreachable,
+          pending: root.svc.pending, canWave: root.svc.canWave,
+          baton: root.svc.baton, nowMs: root.svc.nowMs,
+          cooldownRemaining: root.svc.cooldownRemaining, nobodyAround: root.svc.nobodyAround,
+          outdated: root.svc.outdated, lastOrigin: root.svc.lastOrigin,
+          lastEvent: root.svc.lastEvent, statsKnown: root.svc.statsKnown,
+          globalTotal: root.svc.globalTotal, online: root.svc.online,
+          receivedCountryCount: root.svc.receivedCountryCount, countryNames: Countries.NAMES
+        })
+        onWave: if (root.service) root.service.sendWave()
+        onExplore: Util.execArgv(["xdg-open", Model.batonUrl(root.relayUrl, root.svc.baton || null)])
+        onInvite: if (root.service) root.service.copyInvite()
+        onSettingChanged: function(key, value) { root.setSetting(key, value) }
       }
     }
   }

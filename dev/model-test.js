@@ -6,7 +6,7 @@ const load = (file) => {
   const src = fs.readFileSync(path.join(__dirname, "..", file), "utf8")
   const sandbox = {}
   new Function("exports", src + "\n;Object.assign(exports, typeof NAMES !== 'undefined' ? {NAMES} : {" +
-    "parseFrame, flagFor, originLabel, waveHeadline, outgoingNotification, cooldownLabel, formatCount, countrySet, addCountry, countryCount, tooltipText, backoffMs, ageLabel, batonLabel, cooldownDeadline, remainingSeconds, batonUrl, inviteText, asBool, tickMs, versionBefore, VERSION, PLUGIN_ID, UPDATE_COMMAND, RESTART_COMMAND, MAX_FRAME_CHARS, MAX_TEXT_CHARS, MAX_COOLDOWN_SECONDS, SLOW_RETRY_AFTER, SLOW_RETRY_MS})")(sandbox)
+    "cardState, cardAction, parseFrame, flagFor, originLabel, waveHeadline, cooldownLabel, formatCount, countrySet, addCountry, countryCount, backoffMs, ageLabel, batonLabel, cooldownDeadline, remainingSeconds, batonUrl, inviteText, asBool, tickMs, versionBefore, VERSION, PLUGIN_ID, UPDATE_COMMAND, RESTART_COMMAND, MAX_FRAME_CHARS, MAX_TEXT_CHARS, MAX_COOLDOWN_SECONDS, SLOW_RETRY_AFTER, SLOW_RETRY_MS})")(sandbox)
   return sandbox
 }
 
@@ -52,15 +52,6 @@ eq("originLabel opted-out", M.originLabel("??", C.NAMES), "somewhere")
 
 eq("waveHeadline", M.waveHeadline("SE", C.NAMES), "\u{1F1F8}\u{1F1EA}  Someone in Sweden")
 eq("waveHeadline opted-out reads as a sentence", M.waveHeadline("??", C.NAMES), "Someone, somewhere")
-eq("outgoing plain wave feels connected", M.outgoingNotification(false), {
-  title: "Wave delivered",
-  body: "Someone out there received your hello. You made the community feel a little closer."
-})
-eq("outgoing baton celebrates the handoff", M.outgoingNotification(true), {
-  title: "Baton passed",
-  body: "It's in someone else's hands now. The story keeps moving."
-})
-
 eq("cooldownLabel seconds", M.cooldownLabel(45), "45s")
 eq("cooldownLabel minutes", M.cooldownLabel(600), "10m")
 eq("cooldownLabel exact hour", M.cooldownLabel(3600), "1h")
@@ -81,20 +72,6 @@ eq("backoffMs grows", M.backoffMs(4), 16000)
 eq("backoffMs caps", M.backoffMs(M.SLOW_RETRY_AFTER - 1), 60000)
 eq("backoffMs slows once the relay looks gone", [M.backoffMs(M.SLOW_RETRY_AFTER), M.backoffMs(99)], [M.SLOW_RETRY_MS, M.SLOW_RETRY_MS])
 eq("backoffMs slow tail still jitters", M.backoffMs(99, 0), M.SLOW_RETRY_MS / 2)
-
-eq("tooltip offline", M.tooltipText({ connected: false }), "Baton — offline")
-eq("tooltip stale while offline", M.tooltipText({ connected: false, stale: true, unreachable: true }),
-  "Baton — offline\nUpdate installed \u2014 finish it with " + M.RESTART_COMMAND)
-eq("tooltip stale while connected", M.tooltipText({ connected: true, stale: true }),
-  "Click to wave at an Omarch\nUpdate installed \u2014 finish it with " + M.RESTART_COMMAND)
-eq("tooltip prefers the relay's update hint over stale", M.tooltipText({ connected: true, stale: true, outdated: true }),
-  "Click to wave at an Omarch\nUpdate available \u2014 " + M.UPDATE_COMMAND)
-eq("tooltip ready", M.tooltipText({ connected: true, showCounter: true, globalTotal: 1204891, online: 3847, countryNames: C.NAMES }),
-  "Click to wave at an Omarch\n1,204,891 waves sent to Omarchs\n3,847 online now")
-eq("tooltip cooling down", M.tooltipText({ connected: true, cooldownRemaining: 1800, lastOrigin: "JP", countryNames: C.NAMES }),
-  "Next wave in 30m\nLast wave from Japan")
-eq("tooltip names the community total", M.tooltipText({ connected: true, globalTotal: 120491, showCounter: true }),
-  "Click to wave at an Omarch\n120,491 waves sent to Omarchs")
 
 // --- batons ---
 const NOW = Date.parse("2026-09-04T18:00:00Z")
@@ -117,25 +94,15 @@ eq("batonLabel freshly minted has no countries yet", M.batonLabel({ hops: 1, bor
   "1 hop \u00b7 born just now")
 eq("batonLabel absent", M.batonLabel(null, NOW), "")
 
-eq("tooltip holding a baton", M.tooltipText({
-  connected: true, baton: { hops: 412, born: ago(21 * DAY), countries: 23 }, nowMs: NOW, countryNames: C.NAMES }),
-  "Click to pass the baton on\nHolding a baton \u2014 412 hops \u00b7 alive 3 weeks \u00b7 23 countries")
-
 eq("deadline survives sleep", M.remainingSeconds(M.cooldownDeadline(3600, NOW), NOW + 3600000), 0)
 eq("deadline rounds up", M.remainingSeconds(NOW + 1001, NOW), 2)
 eq("invalid cooldown", M.cooldownDeadline(Infinity, NOW), NOW)
 eq("absurd cooldown is capped at a day", M.remainingSeconds(M.cooldownDeadline(1e12, NOW), NOW), M.MAX_COOLDOWN_SECONDS)
 eq("negative cooldown is zero", M.cooldownDeadline(-5, NOW), NOW)
-eq("tooltip when the relay looks gone", M.tooltipText({ connected: false, unreachable: true }), "Baton — offline\nCan't reach the relay \u2014 still retrying")
-eq("tooltip without an identity", M.tooltipText({ connected: false, identityError: true, unreachable: true }), "Baton — offline\nCould not create an identity \u2014 check ~/.local/state/baton")
 eq("jitter lower bound", M.backoffMs(3, 0), 4000)
 eq("jitter upper bound", M.backoffMs(3, 1), 8000)
 eq("baton link", M.batonUrl("https://relay.example/", { id: "a/b" }), "https://relay.example/b/a%2Fb")
 eq("invite without identity", M.inviteText("https://relay.example", null, NOW), "Wave at a random Omarchy user, somewhere in the world. Put a wave in your Omarchy bar. https://relay.example/")
-eq("pending tooltip", M.tooltipText({ connected: true, pending: true }), "Sending a wave…")
-eq("tooltip after an empty room", M.tooltipText({ connected: true, cooldownRemaining: 45, nobodyAround: true }),
-  "Next wave in 45s\nYour last wave found nobody online")
-
 // --- settings and timers ---
 eq("asBool real booleans pass through", [M.asBool(true, false), M.asBool(false, true)], [true, false])
 eq("asBool accepts what `omarchy bar set` stores", [M.asBool("true", false), M.asBool("false", true), M.asBool(" Yes ", false), M.asBool("0", true)], [true, false, true, false])
@@ -154,8 +121,25 @@ eq("versionBefore ahead", M.versionBefore("0.10.0", "0.9.9"), false)
 eq("versionBefore short segments count as zero", [M.versionBefore("0.4", "0.4.0"), M.versionBefore("0.4", "0.4.1")], [false, true])
 eq("versionBefore no floor is never behind", [M.versionBefore("0.4.0", ""), M.versionBefore("0.4.0", undefined), M.versionBefore("0.4.0", "v1"), M.versionBefore("0.4.0", "1.0-rc1")], [false, false, false, false])
 eq("versionBefore bad current is never behind", M.versionBefore("", "9.9.9"), false)
-eq("tooltip when behind", M.tooltipText({ connected: true, outdated: true }),
-  "Click to wave at an Omarch\nUpdate available \u2014 omarchy plugin update io.github.decadentsavant.baton")
+// Card priority: errors and in-flight requests must win over old happy events.
+const ready = { connected: true, canWave: true, countryNames: C.NAMES }
+const card = (extra) => M.cardState(Object.assign({}, ready, extra))
+eq("card ready", card({}).key, "ready")
+eq("card connection beats delivery", card({ connected: false, lastEvent: "delivered" }).key, "offline")
+eq("card identity error", card({ identityError: true }).key, "identity")
+eq("card stale beats readiness", card({ stale: true }).key, "stale")
+eq("card pending beats incoming", card({ pending: true, lastEvent: "received" }).key, "sending")
+eq("card private incoming", card({ lastEvent: "received", lastOrigin: "??" }).title, "Someone, somewhere")
+eq("card incoming baton", card({ lastEvent: "received-baton", lastOrigin: "PL" }).key, "received")
+eq("card orphan baton", card({ lastEvent: "handed", baton: {} }).title, "A baton found you")
+eq("card expired orphan ownership", card({ lastEvent: "handed" }).key, "ready")
+eq("card handoff confirmation", card({ lastEvent: "passed" }).key, "delivered")
+eq("card empty room beats holding", card({ nobodyAround: true, baton: {}, cooldownRemaining: 45 }).key, "empty")
+eq("card holding while cooling", card({ baton: {}, cooldownRemaining: 45 }).key, "baton")
+eq("card generic cooldown", card({ cooldownRemaining: 45 }).key, "cooldown")
+eq("card pass action", M.cardAction({ connected: true, baton: {} }), "Pass the baton")
+eq("card waiting action", M.cardAction({ connected: true, baton: {}, cooldownRemaining: 45 }), "Next wave in 45s")
+eq("card unknown delivery", card({ connected: false, lastEvent: "failed" }).body.includes("couldn’t be confirmed"), true)
 
 console.log(failures === 0 ? "\nall passed" : `\n${failures} failed`)
 process.exit(failures === 0 ? 0 : 1)

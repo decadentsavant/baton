@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Render the marketplace still, preview.webp, from dev/listing/listing.html.
-# The page embeds a real screenshot of the widget in the bar (dev/listing/bar.png);
-# retake that screenshot and rerun this when the tooltip or bar changes.
+# The page embeds a real screenshot of the hover card (dev/listing/card.png);
+# retake that screenshot and rerun this when the card changes materially.
 # Needs chromium, ImageMagick, Noto Sans, Noto Color Emoji, and JetBrainsMono Nerd Font.
 set -euo pipefail
 src="$(cd "$(dirname "$0")/.." && pwd)"

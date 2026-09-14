@@ -42,6 +42,10 @@ Scope {
   readonly property int receivedCountryCount: Model.countryCount(receivedCountries)
   property string lastOrigin: ""
   property bool nobodyAround: false
+  property string lastEvent: ""
+  property bool statsKnown: false
+  function showEvent(event) { root.lastEvent = event; eventTimer.restart() }
+  Timer { id: eventTimer; interval: 15000; onTriggered: root.lastEvent = "" }
   property var baton: null
   property double nowMs: Date.now()
   property double readyAt: 0
@@ -49,7 +53,7 @@ Scope {
   property bool updateNotified: false
   property bool identityError: false
   // True once the relay has been out of reach long enough that the backoff
-  // has settled into its slow tail; the tooltip says so instead of "offline".
+  // has settled into its slow tail; the card explains that it is still retrying.
   readonly property bool unreachable: reconnectAttempt >= Model.SLOW_RETRY_AFTER
   readonly property bool outdated: Model.versionBefore(Model.VERSION, minClient)
   readonly property int cooldownRemaining: Model.remainingSeconds(readyAt, nowMs)
@@ -62,7 +66,7 @@ Scope {
   onConnectedChanged: if (root.connected) console.log("Baton: connected to " + root.relayUrl)
   // Once per instance. The host recreates the service on every reload, so a
   // user who updates and keeps working hears this once per update, not once
-  // per bar tick; the tooltip carries the hint until the restart.
+  // per bar tick; the card carries the hint until the restart.
   onStaleChanged: {
     if (!root.stale) return
     console.log("Baton: " + root.installedVersion + " is installed but " + Model.VERSION + " is running; restart the shell")
@@ -95,7 +99,7 @@ Scope {
     root.minClient = ""
   }
 
-  // Once per session, and only when a relay actually says so. The tooltip
+  // Once per session, and only when a relay actually says so. The card
   // keeps the hint for as long as the widget stays behind.
   onOutdatedChanged: {
     if (!root.outdated || root.updateNotified) return
@@ -137,6 +141,8 @@ Scope {
       root.lastOrigin = ""
       root.nobodyAround = false
       root.globalTotal = 0
+      root.statsKnown = false
+      root.lastEvent = ""
       root.online = 0
       root.readyAt = 0
       root.minClient = ""
@@ -286,6 +292,7 @@ Scope {
       root.rememberCountry(root.lastOrigin)
       root.nobodyAround = false
       if (frame.baton) root.baton = frame.baton
+      root.showEvent(frame.baton ? "received-baton" : "received")
       root.received()
       var body = frame.baton ? "passed you a baton — " + Model.batonLabel(frame.baton, root.nowMs) : "waved at you"
       Util.execArgv(["omarchy-notification-send", "--app-name", "Baton", "-u", "low", "-g", root.glyph,
@@ -293,8 +300,10 @@ Scope {
       if (root.soundEnabled) root.chime()
     } else if (frame.type === "baton") {
       root.baton = frame.baton || null
+      if (root.baton) root.showEvent("handed")
       root.handed()
     } else if (frame.type === "stats") {
+      root.statsKnown = true
       root.globalTotal = Math.max(0, Number(frame.total) || 0)
       root.online = Math.max(0, Number(frame.online) || 0)
     }
@@ -323,27 +332,28 @@ Scope {
         // Ownership only comes from the ordered stream. An old POST reply
         // must never clear a baton that arrived while the request was running.
         if (frame.delivered === false) {
-          // An empty room. Say so, or the click looks like it did nothing.
+          // The card explains the empty room and shows the retry countdown.
           root.nobodyAround = true
-          Util.execArgv(["omarchy-notification-send", "--app-name", "Baton", "-u", "low", "-g", root.glyph,
-            "Nobody's around right now", "Your wave found an empty room. Try again in " + Model.cooldownLabel(root.cooldownRemaining) + "."])
         } else if (frame.delivered === true) {
-          var confirmation = Model.outgoingNotification(frame.passed === true)
-          Util.execArgv(["omarchy-notification-send", "--app-name", "Baton", "-u", "low", "-g", root.glyph,
-            confirmation.title, confirmation.body])
+          root.nobodyAround = false
+          root.showEvent(frame.passed === true ? "passed" : "delivered")
         }
       }
     }
     onExited: function(exitCode) {
       Qt.callLater(function() {
         root.pending = false
-        if (root.waveGeneration === root.generation && (exitCode !== 0 || !root.replyReceived)) root.reconnect()
+        if (root.waveGeneration === root.generation && (exitCode !== 0 || !root.replyReceived)) {
+          root.showEvent("failed")
+          root.reconnect()
+        }
       })
     }
   }
   function sendWave() {
     if (!root.canWave || waveProc.running) return
     root.pending = true
+    root.lastEvent = ""
     root.nobodyAround = false
     root.replyReceived = false
     root.waveGeneration = root.generation
