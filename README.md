@@ -2,7 +2,7 @@
 
 **Someone's out there.** Wave at a random Omarchy user, somewhere in the world.
 
-![Baton in the Omarchy bar, with waves arriving from Poland and Japan](preview.webp)
+![Baton hover card, ready to send a wave](preview.webp?version=1.1.0)
 
 Baton puts a hand in your Omarchy bar. Click it, and somewhere in the world
 another Omarchy user's bar pulses:
